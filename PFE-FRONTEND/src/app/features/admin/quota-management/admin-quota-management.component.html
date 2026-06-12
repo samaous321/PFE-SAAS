@@ -1,0 +1,659 @@
+<div class="quota-dashboard-shell">
+
+
+  <nav class="section-nav" aria-label="Quota management sections">
+    <button
+      *ngFor="let tab of tabs"
+      type="button"
+      class="nav-tab"
+      [class.active]="activeTab === tab.id"
+      (click)="setActiveTab(tab.id)"
+    >
+      <span class="nav-tab-icon">{{ tab.icon }}</span>
+      <span class="nav-tab-label">{{ tab.label }}</span>
+    </button>
+  </nav>
+
+  <main class="dashboard-grid">
+    <section *ngIf="activeTab === 'plans'" class="workspace-section" aria-labelledby="plans-title">
+      
+        <section class="hero-panel">
+    <div class="hero-copy">
+      <div class="eyebrow">Super Admin / Quota Management</div>
+      <h1>Quota Control Center</h1>
+      <p>
+        Pilot the subscription plans, tenant quota policies, and usage analytics from one
+        premium enterprise workspace.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button class="icon-button ghost" type="button" (click)="refresh()" [disabled]="loading || loadingPlans" title="Refresh data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M23 4v6h-6" />
+          <path d="M1 20v-6h6" />
+          <path d="M3.51 9a9 9 0 0114.85-3.36" />
+          <path d="M20.49 15a9 9 0 01-14.85 3.36" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="hero-metrics" [class.compact]="inlineTenantId">
+      <article class="hero-metric">
+        <span class="metric-label">Tenants</span>
+        <strong>{{ getTotalTenants() }}</strong>
+        <small>Active organizations</small>
+      </article>
+      <article class="hero-metric">
+        <span class="metric-label">Plans</span>
+        <strong>{{ getActivePlanCount() }}</strong>
+        <small>Selectable tiers</small>
+      </article>
+      <article class="hero-metric">
+        <span class="metric-label">Usage</span>
+        <strong>{{ getAverageUsagePercent() }}%</strong>
+        <small>Average storage pressure</small>
+      </article>
+      <article class="hero-metric danger">
+        <span class="metric-label">Critical</span>
+        <strong>{{ getCriticalAlerts() }}</strong>
+        <small>Near quota limits</small>
+      </article>
+    </div>
+  </section>
+      
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Pricing architecture</span>
+          <h2 id="plans-title">Gestion des Plans</h2>
+          <p>Organize the subscription tiers as a clean SaaS catalog with fast actions.</p>
+        </div>
+
+        <div class="section-tools">
+          <div class="search-field">
+            <span class="search-icon">⌕</span>
+            <input
+              type="text"
+              [(ngModel)]="planSearchFilter"
+              placeholder="Search a plan..."
+              aria-label="Search plan"
+            />
+          </div>
+          <button class="icon-button primary" type="button" (click)="openCreatePlan()" title="Create plan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="plan-summary-strip">
+        <article class="mini-stat">
+          <span>Active tiers</span>
+          <strong>{{ getActivePlanCount() }}</strong>
+        </article>
+        <article class="mini-stat">
+          <span>Plan usage</span>
+          <strong>{{ getTotalTenants() }}</strong>
+        </article>
+        <article class="mini-stat">
+          <span>Most used</span>
+          <strong>{{ getTenantsByPlan('small') + getTenantsByPlan('standard') }}</strong>
+        </article>
+      </div>
+
+      <div class="plans-layout">
+        <aside class="insight-panel">
+          <div class="insight-card">
+            <span class="insight-title">Portfolio Mix</span>
+            <div class="mix-row">
+              <span>Small</span>
+              <div class="mix-bar"><i [style.width.%]="(getTenantsByPlan('small') / (getTotalTenants() || 1)) * 100"></i></div>
+              <strong>{{ getTenantsByPlan('small') }}</strong>
+            </div>
+            <div class="mix-row">
+              <span>Standard</span>
+              <div class="mix-bar"><i [style.width.%]="(getTenantsByPlan('standard') / (getTotalTenants() || 1)) * 100"></i></div>
+              <strong>{{ getTenantsByPlan('standard') }}</strong>
+            </div>
+            <div class="mix-row">
+              <span>Large</span>
+              <div class="mix-bar"><i [style.width.%]="(getTenantsByPlan('large') / (getTotalTenants() || 1)) * 100"></i></div>
+              <strong>{{ getTenantsByPlan('large') }}</strong>
+            </div>
+            <div class="mix-row">
+              <span>Unlimited</span>
+              <div class="mix-bar"><i [style.width.%]="(getTenantsByPlan('unlimited') / (getTotalTenants() || 1)) * 100"></i></div>
+              <strong>{{ getTenantsByPlan('unlimited') }}</strong>
+            </div>
+          </div>
+
+          <div class="insight-card subtle">
+            <span class="insight-title">Plan health</span>
+            <p>{{ getActivePlanCount() }} active plans are currently available for assignment.</p>
+          </div>
+        </aside>
+
+        <div class="cards-grid" *ngIf="!loadingPlans; else plansLoading">
+          <article class="plan-card" *ngFor="let plan of filteredPlans">
+            <div class="plan-card-top">
+              <div>
+                <span class="plan-pill" [ngClass]="'plan-' + plan.slug">{{ getPlanIcon(plan) }}</span>
+                <h3>{{ plan.name }}</h3>
+                <p>{{ plan.description || 'No description provided.' }}</p>
+              </div>
+              <span class="status-badge" [class.disabled]="plan.isActive === false">
+                {{ getPlanStatusLabel(plan) }}
+              </span>
+            </div>
+
+            <div class="plan-card-body">
+              <div class="spec-grid">
+                <div>
+                  <span>Storage</span>
+                  <strong>{{ getPlanStorage(plan) }}</strong>
+                </div>
+                <div>
+                  <span>Users</span>
+                  <strong>{{ getPlanUsers(plan) }}</strong>
+                </div>
+                <div>
+                  <span>Files</span>
+                  <strong>{{ getPlanFiles(plan) }}</strong>
+                </div>
+                <div>
+                  <span>Tenants</span>
+                  <strong>{{ getPlanUsageCount(plan.slug) }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="plan-card-actions">
+              <button type="button" class="icon-button secondary" (click)="editPlan(plan)" title="Edit plan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="icon-button secondary"
+                (click)="togglePlanActivation(plan)"
+                [disabled]="plan.isDefault"
+                [title]="plan.isDefault ? 'Impossible de désactiver un plan par défaut' : (plan.isActive === false ? 'Réactiver le plan' : 'Désactiver le plan')"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path *ngIf="plan.isActive !== false" d="M12 5v14M5 12h14" />
+                  <path *ngIf="plan.isActive === false" d="M18 6l-12 12" />
+                  <path *ngIf="plan.isActive === false" d="M6 6l12 12" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="icon-button danger"
+                (click)="deletePlan(plan)"
+                [disabled]="plan.isDefault"
+                [title]="plan.isDefault ? 'Default plans cannot be removed' : 'Remove plan'"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #plansLoading>
+          <div class="loading-card">Loading plans...</div>
+        </ng-template>
+      </div>
+    </section>
+
+    <section *ngIf="activeTab === 'config'" class="workspace-section" aria-labelledby="config-title">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Quota orchestration</span>
+          <h2 id="config-title">Configuration des Quotas</h2>
+          <p>Premium quota editor with clear hierarchy, instant feedback, and fast presets.</p>
+        </div>
+
+        <div class="section-tools">
+          <label class="tenant-select-card full-width-select">
+            <span class="tenant-select-title">Sélectionner un tenant</span>
+            <div class="tenant-select-field">
+              <select
+                [(ngModel)]="selectedTenantId"
+                (ngModelChange)="selectTenant($event)"
+                aria-label="Select tenant"
+              >
+                <option value="" disabled>Select a tenant</option>
+                <option *ngFor="let tenant of filteredTenants" [value]="tenant._id">
+                  {{ tenant.name }} · {{ (tenant.subscriptionPlan || 'small') | uppercase }} · {{ getTenantUsagePercent(tenant) }}%
+                </option>
+              </select>
+              <span class="select-icon">⌄</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="config-layout">
+        <div class="config-stack" *ngIf="selectedTenantQuota; else noTenantSelected">
+          <article class="quota-editor">
+          <div class="quota-editor-head">
+            <div>
+              <span class="section-kicker">Live policy</span>
+              <h3>{{ selectedTenant?.name }}</h3>
+              <p>Current plan: {{ selectedTenantQuota.subscriptionPlan | uppercase }}</p>
+            </div>
+            <div class="policy-badges">
+              <span class="plan-badge">{{ selectedTenantQuota.storageUsedPercent || 0 }}% used</span>
+              <span class="plan-badge muted">{{ getUsageStatusText(selectedTenantQuota.storageUsedPercent) }}</span>
+            </div>
+          </div>
+
+          <div class="usage-ribbon">
+            <article>
+              <span>Storage</span>
+              <strong>{{ formatBytes(selectedTenantQuota.storageUsed) }}</strong>
+            </article>
+            <article>
+              <span>Users</span>
+              <strong>{{ selectedTenantQuota.usersCount }}</strong>
+            </article>
+            <article>
+              <span>Files</span>
+              <strong>{{ selectedTenantQuota.filesCount || 0 }}</strong>
+            </article>
+            <article>
+              <span>Folders</span>
+              <strong>{{ selectedTenantQuota.foldersCount || 0 }}</strong>
+            </article>
+          </div>
+
+          <div class="config-note">
+            <strong>Assignation de plan</strong>
+            <span>Choisissez un plan et cliquez sur « Assigner » pour mettre à jour le tenant sans recharger la page.</span>
+          </div>
+
+          <form class="quota-form" [formGroup]="quotaForm">
+            <div class="form-card emphasis">
+              <div class="form-card-head">
+                <h4>Subscription plan</h4>
+                <p>Plan attribué et détails de la politique.</p>
+              </div>
+
+              <div class="plan-selector-row plan-summary-view">
+                <select class="premium-select" formControlName="subscriptionPlan" (change)="onPlanChange()">
+                  <option value="" disabled>Select a plan</option>
+                  <option *ngFor="let plan of getActivePlans()" [value]="plan.slug">
+                    {{ getPlanIcon(plan) }} {{ plan.name }} - {{ getPlanStorage(plan) }}
+                  </option>
+                </select>
+
+                <div class="plan-summary-info">
+                  <span class="plan-chip" [ngClass]="'plan-' + (selectedTenantQuota.subscriptionPlan || 'small')">
+                    {{ selectedTenantQuota.subscriptionPlan | uppercase }}
+                  </span>
+                  <small>Plan actuellement assigné</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="quota-grid">
+              <div class="form-card">
+                <div class="form-card-head">
+                  <h4>Tenant limits</h4>
+                  <p>Capacités globales de l’organisation.</p>
+                </div>
+                <div class="field-grid">
+                  <label>
+                    <span>Storage (GB)</span>
+                    <input type="number" formControlName="tenantStorageGb" min="0" step="1" class="premium-input" [disabled]="true" />
+                  </label>
+                  <label>
+                    <span>Max users</span>
+                    <input type="number" formControlName="tenantMaxUsers" min="0" step="1" class="premium-input" [disabled]="true" />
+                  </label>
+                  <label>
+                    <span>Max files</span>
+                    <input type="number" formControlName="tenantMaxFiles" min="0" step="1" class="premium-input" [disabled]="true" />
+                  </label>
+                  <label>
+                    <span>Max folders</span>
+                    <input type="number" formControlName="tenantMaxFolders" min="0" step="1" class="premium-input" [disabled]="true" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-card">
+                <div class="form-card-head">
+                  <h4>User limits</h4>
+                  <p>Politique par utilisateur pour le stockage et les uploads.</p>
+                </div>
+                <div class="field-grid">
+                  <label>
+                    <span>User storage (GB)</span>
+                    <input type="number" formControlName="userStorageGb" min="0" step="1" class="premium-input" [disabled]="true" />
+                  </label>
+                  <label>
+                    <span>User max files</span>
+                    <input type="number" formControlName="userMaxFiles" min="0" step="1" class="premium-input" [disabled]="true" />
+                  </label>
+                  <label>
+                    <span>Daily upload (GB)</span>
+                    <input type="number" formControlName="userDailyUploadGb" min="0" step="0.1" class="premium-input" [disabled]="true" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="quota-form-footer assign-actions">
+              <button type="button" class="icon-button secondary" (click)="resetToCurrentPlan()" title="Réinitialiser le plan">
+                Réinitialiser
+              </button>
+              <button type="button" class="icon-button primary" (click)="saveTenantQuota()" [disabled]="saving || !selectedTenantId" title="Assigner le plan au tenant sélectionné">
+                {{ saving ? 'Assignation...' : 'Assigner' }}
+              </button>
+            </div>
+          </form>
+          </article>
+        </div>
+
+        <ng-template #noTenantSelected>
+          <div class="empty-panel">
+            <strong>Select a tenant</strong>
+            <p>Choose a tenant from the list to edit quotas with live context.</p>
+          </div>
+        </ng-template>
+      </div>
+    </section>
+
+    <section *ngIf="activeTab === 'stats'" class="workspace-section" aria-labelledby="stats-title">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Analytics layer</span>
+          <h2 id="stats-title">Statistiques</h2>
+          <p>Real quota signals, utilization health, and enterprise-grade operational visibility.</p>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!inlineTenantId">
+        <div class="stats-grid">
+          <article class="stats-card highlight">
+            <span class="stats-label">Storage used</span>
+            <strong>{{ getTotalStorageUsedFormatted() }}</strong>
+            <small>Across all tenants</small>
+          </article>
+          <article class="stats-card">
+            <span class="stats-label">Storage remaining</span>
+            <strong>{{ getRemainingStorageFormatted() }}</strong>
+            <small>On total tenant quotas</small>
+          </article>
+          <article class="stats-card">
+            <span class="stats-label">Tenants</span>
+            <strong>{{ getTotalTenants() }}</strong>
+            <small>Managed organizations</small>
+          </article>
+          <article class="stats-card">
+            <span class="stats-label">Users</span>
+            <strong>{{ getTotalUsers() }}</strong>
+            <small>Active users counted</small>
+          </article>
+          <article class="stats-card danger">
+            <span class="stats-label">Critical alerts</span>
+            <strong>{{ getCriticalAlerts() }}</strong>
+            <small>90%+ utilization</small>
+          </article>
+        </div>
+
+        <div class="stats-charts-grid">
+          <article class="analytics-card chart-card">
+            <div class="analytics-head">
+              <div>
+                <h3>Health distribution</h3>
+                <p>Tenant health bands by quota consumption.</p>
+              </div>
+              <strong>{{ getTotalTenants() }} tenants</strong>
+            </div>
+
+            <div class="donut-chart" [style.background]="getHealthPieGradient()">
+              <div class="donut-center">
+                <strong>{{ getTotalTenants() }}</strong>
+                <span>Tenants</span>
+              </div>
+            </div>
+
+            <div class="distribution-list compact">
+              <div class="distribution-row" *ngFor="let bucket of getQuotaDistribution()">
+                <span>{{ bucket.label }}</span>
+                <strong>{{ bucket.count }}</strong>
+                <small>{{ bucket.percent }}%</small>
+              </div>
+            </div>
+          </article>
+
+          <article class="analytics-card chart-card">
+            <div class="analytics-head">
+              <div>
+                <h3>Plan share</h3>
+                <p>Tenant distribution across active quota plans.</p>
+              </div>
+              <strong>{{ getTotalTenants() }} tenants</strong>
+            </div>
+
+            <div class="chart-bar-list">
+              <div class="chart-bar-row" *ngFor="let plan of getPlanDistribution()">
+                <div class="chart-bar-label">
+                  <strong>{{ plan.label }}</strong>
+                  <small>{{ plan.count }} tenants</small>
+                </div>
+                <div class="chart-bar-track">
+                  <span class="chart-bar-fill" [style.width.%]="plan.percent" [ngClass]="plan.tone"></span>
+                </div>
+                <small>{{ plan.percent }}%</small>
+              </div>
+            </div>
+          </article>
+
+          <article class="analytics-card chart-card">
+            <div class="analytics-head">
+              <div>
+                <h3>Utilization trend</h3>
+                <p>Top tenant usage percent across the most active organizations.</p>
+              </div>
+              <strong>{{ getTopTenantUsageSeries().length }} top tenants</strong>
+            </div>
+
+            <div class="line-chart-shell">
+              <svg class="line-chart" viewBox="0 0 240 120" preserveAspectRatio="none">
+                <polyline class="line-path" [attr.points]="getTenantUsageTrendPoints()" />
+                <circle
+                  *ngFor="let entry of getTopTenantUsageSeries(); let i = index"
+                  [attr.cx]="20 + i * (220 / (getTopTenantUsageSeries().length - 1 || 1))"
+                  [attr.cy]="100 - entry.percent"
+                  r="3"
+                />
+              </svg>
+            </div>
+
+            <div class="line-chart-labels">
+              <span *ngFor="let entry of getTopTenantUsageSeries()">{{ entry.label | slice:0:10 }}%</span>
+            </div>
+          </article>
+
+          <article class="analytics-card chart-card">
+            <div class="analytics-head">
+              <div>
+                <h3>Warning histogram</h3>
+                <p>Tenant counts by utilization bucket.</p>
+              </div>
+              <strong>{{ getTotalTenants() }} tenants</strong>
+            </div>
+
+            <div class="chart-bar-list histogram">
+              <div class="chart-bar-row" *ngFor="let bucket of getQuotaUsageBuckets()">
+                <div class="chart-bar-label">
+                  <strong>{{ bucket.label }}</strong>
+                  <small>{{ bucket.count }} tenants</small>
+                </div>
+                <div class="chart-bar-track">
+                  <span class="chart-bar-fill warning" [style.width.%]="bucket.percent"></span>
+                </div>
+                <small>{{ bucket.percent }}%</small>
+              </div>
+            </div>
+          </article>
+        </div>
+        
+        <div class="comparison-card">
+          <div class="comparison-head">
+            <div>
+              <span class="section-kicker">Tenant comparison</span>
+              <h3>Live quota overview</h3>
+              <p>Compare usage, limits, and saturation across tenants at a glance.</p>
+            </div>
+            <span class="comparison-pill">{{ statsFilteredTenants.length }} tenants</span>
+          </div>
+
+          <div class="stats-table-controls">
+            <div class="search-field">
+              <span class="search-icon">⌕</span>
+              <input
+                type="text"
+                [(ngModel)]="statsSearchFilter"
+                (ngModelChange)="statsPage = 1"
+                placeholder="Search tenant or plan..."
+                aria-label="Search tenants"
+              />
+            </div>
+
+            <div class="select-field">
+              <label>
+                <span>Plan</span>
+                <select [(ngModel)]="statsPlanFilter" (ngModelChange)="statsPage = 1">
+                  <option value="">Tous les plans</option>
+                  <option *ngFor="let plan of plans" [value]="plan.slug">{{ plan.name }}</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="sort-field">
+              <button type="button" class="icon-button secondary" (click)="statsSortDirection = statsSortDirection === 'desc' ? 'asc' : 'desc'">
+                Trier par storage {{ statsSortDirection === 'desc' ? '↓' : '↑' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="comparison-table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Plan</th>
+                  <th>Storage used</th>
+                  <th>Quota total</th>
+                  <th>Progress</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let tenant of statsPaginatedTenants">
+                  <td>
+                    <div class="tenant-row-copy compact">
+                      <span class="tenant-avatar">{{ tenant.name.charAt(0).toUpperCase() }}</span>
+                      <div>
+                        <strong>{{ tenant.name }}</strong>
+                        <small>{{ tenant.usersCount || 0 }} users</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="plan-chip" [ngClass]="'plan-' + (tenant.subscriptionPlan || 'small')">
+                      {{ (tenant.subscriptionPlan || 'small') | uppercase }}
+                    </span>
+                  </td>
+                  <td>{{ getStorageUsedGb(tenant) }} GB</td>
+                  <td>{{ getStorageLimitGb(tenant) }} GB</td>
+                  <td>
+                    <div class="progress-rail">
+                      <span [style.width.%]="getTenantUsagePercent(tenant)"></span>
+                    </div>
+                    <small>{{ getTenantUsagePercent(tenant) }}%</small>
+                  </td>
+                  <td>
+                    <span class="health-chip" [ngClass]="'health-' + getTenantStatus(tenant)">
+                      {{ getTenantStatusText(tenant) }}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="icon-button secondary tenant-detail-button"
+                      (click)="openTenantDetails(tenant)"
+                      title="View tenant details"
+                      aria-label="View tenant details"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="pagination-actions" *ngIf="statsFilteredTenants.length > statsPageSize">
+              <div class="pagination-left">
+                <button type="button" class="icon-button secondary" (click)="statsPage = 1" [disabled]="statsPage === 1">First</button>
+                <button type="button" class="icon-button secondary" (click)="statsPage = statsPage - 1" [disabled]="statsPage === 1">Prev</button>
+              </div>
+              <div class="pagination-center">
+                <span>Page {{ statsPage }} / {{ statsTotalPages }}</span>
+              </div>
+              <div class="pagination-right">
+                <button type="button" class="icon-button secondary" (click)="statsPage = statsPage + 1" [disabled]="statsPage === statsTotalPages">Next</button>
+                <button type="button" class="icon-button secondary" (click)="statsPage = statsTotalPages" [disabled]="statsPage === statsTotalPages">Last</button>
+                <label>
+                  <span>Per page</span>
+                  <select [(ngModel)]="statsPageSize" (ngModelChange)="statsPage = 1">
+                    <option *ngFor="let size of statsPageSizes" [value]="size">{{ size }}</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+        <!-- Inline tenant details panel (renders inside the stats tab) -->
+        <section class="inline-tenant-details" *ngIf="inlineTenantId">
+          <div class="inline-toolbar">
+            <button type="button" class="icon-button secondary" (click)="closeInlineDetails()" title="Retour à la liste">← Retour</button>
+          </div>
+          <app-admin-tenant-details-page [tenantIdInput]="inlineTenantId"></app-admin-tenant-details-page>
+        </section>
+
+        <ng-template #noStatsData>
+          <div class="empty-panel">
+            <strong>No stats data</strong>
+            <p>There are no tenants available to analyze yet.</p>
+          </div>
+        </ng-template>
+    </section>
+  </main>
+
+  <app-plan-modal
+    [isOpen]="planModalIsOpen"
+    [plan]="planModalEditPlan"
+    (close$)="onPlanModalClose()"
+    (save$)="onPlanModalSave($event)"
+  ></app-plan-modal>
+</div>

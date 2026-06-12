@@ -1,0 +1,186 @@
+<div class="alerts-shell">
+  <section class="hero-panel">
+    <div>
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Super Admin · Sécurité</p>
+      <h1>Centre des alertes malware</h1>
+      <p class="hero-copy">
+        Vue claire des alertes critiques, filtrage par tenant et utilisateur, et investigation rapide depuis une seule page.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="loading">
+        <span class="btn-icon">↻</span>
+        {{ loading ? 'Actualisation...' : 'Rafraîchir' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="summary-strip">
+    <article class="summary-card summary-total">
+      <span class="summary-label">Alertes filtrées</span>
+      <strong>{{ currentAlertCountLabel }}</strong>
+      <span class="summary-sub">{{ pageStart }} - {{ pageEnd }} sur {{ totalAlerts }}</span>
+    </article>
+    <article class="summary-card summary-danger">
+      <span class="summary-label">Critiques</span>
+      <strong>{{ topSeverityCount }}</strong>
+      <span class="summary-sub">Score au-dessus de 80</span>
+    </article>
+    <article class="summary-card summary-warning">
+      <span class="summary-label">Élevées</span>
+      <strong>{{ highSeverityCount }}</strong>
+      <span class="summary-sub">Score entre 60 et 79</span>
+    </article>
+    <article class="summary-card summary-info">
+      <span class="summary-label">Modérées</span>
+      <strong>{{ mediumSeverityCount }}</strong>
+      <span class="summary-sub">Score entre 40 et 59</span>
+    </article>
+  </section>
+
+  <section class="filter-panel">
+    <div class="filter-grid">
+      <label class="field-block">
+        <span class="field-label">Tenant</span>
+        <select [(ngModel)]="selectedTenant" (change)="onTenantChange()" class="field-control">
+          <option value="">Tous les tenants</option>
+          <option *ngFor="let tenant of tenants" [value]="tenant._id">{{ tenant.name }}</option>
+        </select>
+      </label>
+
+      <label class="field-block">
+        <span class="field-label">Utilisateur</span>
+        <select [(ngModel)]="selectedOwner" (change)="onFilterChange()" class="field-control" [disabled]="!selectedTenant || tenantUsersLoading">
+          <option value="">Tous les utilisateurs</option>
+          <option *ngFor="let user of filteredTenantUsers" [value]="user._id">{{ getUserDisplayName(user) }}</option>
+        </select>
+      </label>
+
+      <label class="field-block">
+        <span class="field-label">Date début</span>
+        <input type="date" [(ngModel)]="startDate" (change)="onFilterChange()" class="field-control" />
+      </label>
+
+      <label class="field-block">
+        <span class="field-label">Date fin</span>
+        <input type="date" [(ngModel)]="endDate" (change)="onFilterChange()" class="field-control" />
+      </label>
+    </div>
+
+    <div class="filter-footer">
+      <div class="sort-pills">
+        <button type="button" class="sort-pill" [class.active]="sortBy === 'severity'" (click)="sortBy = 'severity'; onFilterChange()">Plus critique</button>
+        <button type="button" class="sort-pill" [class.active]="sortBy === 'newest'" (click)="sortBy = 'newest'; onFilterChange()">Plus récent</button>
+      </div>
+
+      <button type="button" class="clear-btn" (click)="clearFilters()">Réinitialiser</button>
+    </div>
+  </section>
+
+  <section *ngIf="errorMessage" class="message-banner error">
+    <span>⚠</span>
+    <p>{{ errorMessage }}</p>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div>
+        <h2>Alertes sécuritaires</h2>
+        <p>Tableau priorisé pour investiguer rapidement, télécharger et gérer le fichier depuis la même page.</p>
+      </div>
+      <div class="table-head-meta">
+        <span class="meta-pill">Tri: {{ sortBy === 'severity' ? 'Criticité' : 'Date' }}</span>
+        <span class="meta-pill">Page {{ page }} / {{ totalPages }}</span>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement des alertes...</p>
+    </div>
+
+    <div *ngIf="!loading && !alerts.length" class="empty-state">
+      <div class="empty-icon">🛡️</div>
+      <h3>Aucune alerte à afficher</h3>
+      <p>Ajuste les filtres ou attends de nouvelles détections.</p>
+    </div>
+
+    <div *ngIf="!loading && alerts.length" class="table-wrap">
+      <table class="alerts-table">
+        <thead>
+          <tr>
+            <th>Criticité</th>
+            <th>Fichier</th>
+            <th>Tenant / Utilisateur</th>
+            <th>Date</th>
+            <th>État</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let alert of alerts; trackBy: trackByAlertId" (click)="openDetails(alert)" class="alert-row">
+            <td>
+              <div class="severity-cell">
+                <span class="severity-badge" [ngClass]="getSeverityTone(alert)">{{ getSeverityScore(alert) }}%</span>
+                <div class="severity-track"><span class="severity-fill" [ngClass]="getSeverityTone(alert)" [style.width.%]="getSeverityScore(alert)"></span></div>
+              </div>
+            </td>
+            <td>
+              <div class="file-cell">
+                <strong>{{ alert.originalName }}</strong>
+                <span>{{ formatBytes(alert.size) }} · {{ alert.mimeType || 'Type inconnu' }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="info-cell">
+                <strong>{{ getTenantName(alert) }}</strong>
+                <span>{{ getOwnerName(alert) }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="info-cell">
+                <strong>{{ formatDate(alert.createdAt) }}</strong>
+                <span>{{ getRecipientCount(alert) }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="status-chip" [ngClass]="getAlertStatusClass(alert)">{{ getAlertBadge(alert) }}</span>
+              <div class="threat-note">{{ getAlertThreatText(alert) }}</div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button type="button" class="icon-action" (click)="downloadAlert(alert); $event.stopPropagation()" [disabled]="isActionRunning(alert)" title="Télécharger">
+                  <span class="action-icon">⬇</span>
+                </button>
+                <button type="button" class="icon-action ghost" (click)="openDetails(alert); $event.stopPropagation()" title="Détails">
+                  <span class="action-icon">👁</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar" *ngIf="!loading && alerts.length">
+      <button type="button" class="page-btn" (click)="onPageChange(page - 1)" [disabled]="page === 1">Précédent</button>
+      <span>Affichage {{ pageStart }}-{{ pageEnd }} sur {{ totalAlerts }}</span>
+      <button type="button" class="page-btn" (click)="onPageChange(page + 1)" [disabled]="page >= totalPages">Suivant</button>
+    </div>
+  </section>
+
+  <app-alert-investigation-modal
+    *ngIf="detailsOpen && selectedAlert"
+    [alert]="selectedAlert"
+    [tenantName]="getTenantName(selectedAlert)"
+    [ownerName]="getOwnerName(selectedAlert)"
+    [busy]="isActionRunning(selectedAlert)"
+    (close)="closeDetails()"
+    (download)="downloadAlert(selectedAlert)"
+    (approve)="manageQuarantine(selectedAlert, 'whitelist')"
+    (block)="manageQuarantine(selectedAlert, 'block')"
+    (deleteFile)="deleteAlert(selectedAlert)"
+    (openVirusTotal)="openVirusTotal(selectedAlert)"
+  ></app-alert-investigation-modal>
+</div>

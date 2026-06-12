@@ -1,0 +1,698 @@
+<div class="analytics-page">
+  <div class="ambient-shape shape-1"></div>
+  <div class="ambient-shape shape-2"></div>
+  <div class="ambient-shape shape-3"></div>
+
+  <section class="hero-card">
+    <div class="hero-copy">
+      <h1>Analytics multi-tenant</h1>
+      <p class="subtitle">Vue globale et details des tenants</p>
+
+      <div class="hero-meta">
+        <span class="meta-pill">Periode: {{ selectedPeriodLabel }}</span>
+        <span class="meta-pill">Scope: {{ isSuperAdmin ? 'global' : 'tenant' }}</span>
+        <span class="meta-pill">Derniere sync: {{ lastUpdatedAt ? formatDateTime(lastUpdatedAt) : 'n/a' }}</span>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <button class="refresh-btn" type="button" (click)="reload()" [disabled]="loading || tenantLoading">
+        {{ loading ? 'Chargement...' : 'Actualiser' }}
+      </button>
+      <button class="ghost-btn" type="button" (click)="setAllSections(true)">Tout ouvrir</button>
+      <button class="ghost-btn" type="button" (click)="setAllSections(false)">Tout fermer</button>
+    </div>
+  </section>
+
+  <section class="toolbar-card">
+    <div class="toolbar-grid">
+      <div class="filter-group">
+        <label>Periode</label>
+        <select [(ngModel)]="selectedPeriod" (change)="onPeriodChange()">
+          <option value="7">7 jours</option>
+          <option value="30">30 jours</option>
+          <option value="90">90 jours</option>
+          <option value="365">12 mois</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <div *ngIf="error" class="error-banner">{{ error }}</div>
+
+  <div *ngIf="loading" class="loading-shell">
+    <div class="loading-orb"></div>
+    <div>
+      <strong>Construction de la vue globale</strong>
+      <p>Aggregation des stats cross-tenant, des quotas et des signaux de securite.</p>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading && !error">
+    <section class="section-shell" *ngIf="!hasTenantSelection">
+      <div class="section-head">
+        <div class="section-title-row">
+          <h2>Vue globale</h2>
+          <button class="toggle-icon" type="button" (click)="toggleSection('globalOverview')" [class.open]="sectionOpen.globalOverview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="section-body" *ngIf="sectionOpen.globalOverview">
+        <div class="metric-grid">
+          <article class="metric-card" *ngFor="let card of globalSnapshotCards" [ngClass]="'accent-' + card.accent">
+            <span>{{ card.label }}</span>
+            <strong>{{ card.value }}</strong>
+            <p>{{ card.detail }}</p>
+          </article>
+        </div>
+
+        <div class="charts-grid">
+          <article class="chart-card wide">
+            <div class="chart-head">
+              <div>
+                <h3>Cadence globale</h3>
+                <span>Uploads, shares et downloads sur {{ selectedPeriodLabel.toLowerCase() }}</span>
+              </div>
+            </div>
+
+            <div class="chart-viewport chart-viewport-wide" *ngIf="hasChartData(globalActivityTrendChartData); else noGlobalTrend">
+              <canvas baseChart [type]="'line'" [data]="globalActivityTrendChartData" [options]="lineChartOptions"></canvas>
+            </div>
+
+            <ng-template #noGlobalTrend>
+              <div class="chart-empty chart-empty-wide">Pas assez d activite pour tracer la tendance globale.</div>
+            </ng-template>
+          </article>
+
+          <article class="chart-card">
+            <div class="chart-head">
+              <div>
+                <h3>Top stockage</h3>
+                <span>Top 8 tenants en GB</span>
+              </div>
+            </div>
+
+            <div class="chart-viewport" *ngIf="hasChartData(globalStorageByTenantChartData); else noGlobalStorage">
+              <canvas baseChart [type]="'bar'" [data]="globalStorageByTenantChartData" [options]="horizontalBarChartOptions"></canvas>
+            </div>
+
+            <ng-template #noGlobalStorage>
+              <div class="chart-empty">Aucune comparaison de stockage disponible.</div>
+            </ng-template>
+          </article>
+
+          <article class="chart-card">
+            <div class="chart-head">
+              <div>
+                <h3>Users par tenant</h3>
+                <span>Top 8 en volumetrie</span>
+              </div>
+            </div>
+
+            <div class="chart-viewport" *ngIf="hasChartData(globalUsersByTenantChartData); else noGlobalUsers">
+              <canvas baseChart [type]="'bar'" [data]="globalUsersByTenantChartData" [options]="barChartOptions"></canvas>
+            </div>
+
+            <ng-template #noGlobalUsers>
+              <div class="chart-empty">Aucun tenant utilisateur remonte pour la periode.</div>
+            </ng-template>
+          </article>
+
+          <article class="chart-card">
+            <div class="chart-head">
+              <div>
+                <h3>Tenants sensibles</h3>
+                <span>Classement par incidents</span>
+              </div>
+            </div>
+
+            <div class="chart-viewport" *ngIf="hasChartData(globalRiskByTenantChartData); else noGlobalRisk">
+              <canvas baseChart [type]="'bar'" [data]="globalRiskByTenantChartData" [options]="horizontalBarChartOptions"></canvas>
+            </div>
+
+            <ng-template #noGlobalRisk>
+              <div class="chart-empty">Pas de signaux securite classes sur le scope global.</div>
+            </ng-template>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-shell" *ngIf="!hasTenantSelection">
+      <div class="section-head">
+        <div class="section-title-row">
+          <h2>Surveillance</h2>
+          <button class="toggle-icon" type="button" (click)="toggleSection('globalSignals')" [class.open]="sectionOpen.globalSignals">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="section-body" *ngIf="sectionOpen.globalSignals">
+        <div class="signals-layout">
+          <div class="table-card">
+            <div class="table-head">
+              <div>
+                <h3>Classement des tenants</h3>
+                <span>{{ tenantTableRows.length }} tenants compares</span>
+              </div>
+            </div>
+
+            <div class="table-empty" *ngIf="tenantTableRows.length === 0">
+              Aucun tenant ne remonte de donnees pour la periode active.
+            </div>
+
+            <div class="table-scroll" *ngIf="tenantTableRows.length > 0">
+              <div class="table-row row-head">
+                <div>Tenant</div>
+                <div>Users</div>
+                <div>Files</div>
+                <div>Storage</div>
+                <div>Risk</div>
+                <div>Quota</div>
+                <div>Last activity</div>
+              </div>
+
+              <div class="table-row" *ngFor="let row of tenantTableRows | slice:0:10">
+                <div class="tenant-cell">
+                  <strong>{{ row.tenantName }}</strong>
+                  <span>{{ row.tenantId }}</span>
+                </div>
+                <div>{{ row.userCount }}</div>
+                <div>{{ row.fileCount }}</div>
+                <div>{{ formatBytes(row.storageUsed) }}</div>
+                <div>
+                  <span class="mini-badge" [ngClass]="row.riskCount > 0 ? 'tone-danger' : 'tone-success'">
+                    {{ row.riskCount }}
+                  </span>
+                </div>
+                <div>
+                  <div class="quota-track">
+                    <div class="quota-fill" [style.width.%]="row.quotaPercent"></div>
+                  </div>
+                  <span class="quota-text">{{ row.quotaPercent | number:'1.0-0' }}%</span>
+                </div>
+                <div>{{ formatRelativeTime(row.lastActivity) }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stack-column">
+            <article class="list-card">
+              <div class="list-head">
+                <h3>Alertes priorisees</h3>
+                <span>{{ globalActionAlerts.length }}</span>
+              </div>
+
+              <div class="table-empty" *ngIf="globalActionAlerts.length === 0">
+                Aucun signal prioritaire renvoye par le backend.
+              </div>
+
+              <div class="signal-grid" *ngIf="globalActionAlerts.length > 0">
+                <article class="signal-card" *ngFor="let alert of globalActionAlerts" [ngClass]="'accent-' + getSeverityTone(alert.severity)">
+                  <div class="signal-topline">
+                    <span class="mini-badge" [ngClass]="'tone-' + getSeverityTone(alert.severity)">{{ alert.severity }}</span>
+                    <span class="signal-type">{{ alert.type }}</span>
+                  </div>
+                  <strong>{{ alert.tenantName || 'Plateforme' }}</strong>
+                  <p>{{ alert.message }}</p>
+                </article>
+              </div>
+            </article>
+
+            <article class="list-card">
+              <div class="list-head">
+                <h3>Investigation malware</h3>
+                <span>{{ globalAlerts.length }}</span>
+              </div>
+
+              <div class="table-empty" *ngIf="globalAlerts.length === 0">
+                Aucune alerte malware active sur le scope charge.
+              </div>
+
+              <div class="alert-list" *ngIf="globalAlerts.length > 0">
+                <button
+                  class="alert-row"
+                  type="button"
+                  *ngFor="let alert of globalAlerts"
+                  [class.selected]="selectedAlert?._id === alert._id"
+                  (click)="selectAlert(alert)"
+                >
+                  <div>
+                    <strong>{{ alert.originalName }}</strong>
+                    <p>{{ getOwnerDisplayName(alert) }}</p>
+                  </div>
+                  <span class="mini-badge tone-danger">{{ getAlertBadge(alert) }}</span>
+                </button>
+
+                <div class="alert-detail-card" *ngIf="selectedAlert">
+                  <h4>Fiche alerte</h4>
+                  <p><strong>Fichier:</strong> {{ selectedAlert.originalName }}</p>
+                  <p><strong>Owner:</strong> {{ getOwnerDisplayName(selectedAlert) }}</p>
+                  <p><strong>Etat:</strong> {{ selectedAlert.status || 'unknown' }}</p>
+                  <p><strong>Quarantine:</strong> {{ selectedAlert.scanMetadata?.quarantineStatus || 'unknown' }}</p>
+                  <p>
+                    <strong>ClamAV:</strong>
+                    {{ selectedAlert.scanMetadata?.clamavResult?.isInfected ? 'infected' : 'clean' }}
+                  </p>
+                  <p>
+                    <strong>VirusTotal:</strong>
+                    {{ selectedAlert.scanMetadata?.virustotalResult?.isInfected ? 'infected' : 'clean' }}
+                  </p>
+                  <p *ngIf="selectedAlert.scanMetadata?.virustotalResult?.detectionRatio !== undefined">
+                    <strong>Detection ratio:</strong>
+                    {{ selectedAlert.scanMetadata?.virustotalResult?.detectionRatio }}
+                  </p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="tenant-selector-bar" *ngIf="isSuperAdmin && tenants.length > 0">
+      <div class="tenant-selector-content">
+        <div class="tenant-selector-input">
+          <label>Tenant detail:</label>
+          <select [(ngModel)]="selectedTenant" (change)="onTenantChange()">
+            <option value="">Vue globale</option>
+            <option *ngFor="let tenant of tenants" [value]="tenant._id">{{ tenant.name }}</option>
+          </select>
+        </div>
+
+        <div class="tenant-selector-info" *ngIf="hasTenantSelection">
+          <h3>{{ selectedTenantName }}</h3>
+          <span>Plan {{ selectedTenantPlan }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="tenantLoading" class="loading-shell compact">
+      <div class="loading-orb"></div>
+      <div>
+        <strong>Chargement du tenant</strong>
+        <p>Preparation des donnees detaillees.</p>
+      </div>
+    </div>
+
+    <div *ngIf="tenantError" class="error-banner">{{ tenantError }}</div>
+
+    <ng-container *ngIf="hasTenantSelection && !tenantLoading && !tenantError">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-row">
+            <h2>Metriques</h2>
+            <button class="toggle-icon" type="button" (click)="toggleSection('tenantOverview')" [class.open]="sectionOpen.tenantOverview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-body" *ngIf="sectionOpen.tenantOverview">
+          <div class="metric-grid">
+            <article class="metric-card" *ngFor="let card of tenantOverviewCards" [ngClass]="'accent-' + card.accent">
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+              <p>{{ card.detail }}</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-row">
+            <h2>Securite</h2>
+            <button class="toggle-icon" type="button" (click)="toggleSection('tenantSecurity')" [class.open]="sectionOpen.tenantSecurity">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-body" *ngIf="sectionOpen.tenantSecurity">
+          <div class="metric-grid">
+            <article class="metric-card" *ngFor="let card of tenantSecurityCards" [ngClass]="'accent-' + card.accent">
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+              <p>{{ card.detail }}</p>
+            </article>
+          </div>
+
+          <div class="detail-grid detail-grid-4">
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Alertes par user</h3>
+                  <span>Owners exposes</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantSecurityByUserChartData); else noSecurityUsers">
+                <canvas baseChart [type]="'bar'" [data]="tenantSecurityByUserChartData" [options]="horizontalBarChartOptions"></canvas>
+              </div>
+
+              <ng-template #noSecurityUsers>
+                <div class="chart-empty">Aucun owner expose sur ce tenant.</div>
+              </ng-template>
+            </article>
+
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Etat des fichiers</h3>
+                  <span>Actif, bloque, quarantine...</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantFileStatusChartData); else noSecurityState">
+                <canvas baseChart [type]="'doughnut'" [data]="tenantFileStatusChartData" [options]="doughnutChartOptions"></canvas>
+              </div>
+
+              <ng-template #noSecurityState>
+                <div class="chart-empty">Le tenant ne remonte pas de repartition d etat.</div>
+              </ng-template>
+            </article>
+
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Types de fichiers</h3>
+                  <span>Top familles</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantFileTypeChartData); else noSecurityTypes">
+                <canvas baseChart [type]="'doughnut'" [data]="tenantFileTypeChartData" [options]="doughnutChartOptions"></canvas>
+              </div>
+
+              <ng-template #noSecurityTypes>
+                <div class="chart-empty">Aucune distribution mime exploitable.</div>
+              </ng-template>
+            </article>
+
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Mix des menaces</h3>
+                  <span>Suspicious, blocked, quarantined</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantThreatMixChartData); else noSecurityMix">
+                <canvas baseChart [type]="'doughnut'" [data]="tenantThreatMixChartData" [options]="doughnutChartOptions"></canvas>
+              </div>
+
+              <ng-template #noSecurityMix>
+                <div class="chart-empty">Aucun incident securite a ventiler.</div>
+              </ng-template>
+            </article>
+          </div>
+
+          <article class="list-card">
+            <div class="list-head">
+              <h3>Alertes recentes</h3>
+              <span>{{ tenantRecentAlerts.length }}</span>
+            </div>
+
+            <div class="table-empty" *ngIf="tenantRecentAlerts.length === 0">
+              Pas d alerte recente pour le tenant selectionne.
+            </div>
+
+            <div class="list-body" *ngIf="tenantRecentAlerts.length > 0">
+              <article class="list-item" *ngFor="let alert of tenantRecentAlerts">
+                <div class="item-main">
+                  <strong>{{ alert.originalName }}</strong>
+                  <p>{{ getOwnerDisplayName(alert) }}</p>
+                </div>
+                <div class="item-meta">
+                  <span class="mini-badge tone-danger">{{ getAlertBadge(alert) }}</span>
+                  <span>{{ formatRelativeTime(alert.createdAt) }}</span>
+                </div>
+              </article>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-row">
+            <h2>Usage</h2>
+            <button class="toggle-icon" type="button" (click)="toggleSection('tenantUsage')" [class.open]="sectionOpen.tenantUsage">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-body" *ngIf="sectionOpen.tenantUsage">
+          <div class="metric-grid">
+            <article class="metric-card" *ngFor="let card of tenantUsageCards" [ngClass]="'accent-' + card.accent">
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+              <p>{{ card.detail }}</p>
+            </article>
+          </div>
+
+          <div class="charts-grid charts-grid-single">
+            <article class="chart-card wide">
+              <div class="chart-head">
+                <div>
+                  <h3>Tendance d usage</h3>
+                  <span>Vue detaillee sur {{ selectedPeriodLabel.toLowerCase() }}</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport chart-viewport-wide" *ngIf="hasChartData(tenantUsageTrendChartData); else noTenantUsageTrend">
+                <canvas baseChart [type]="'line'" [data]="tenantUsageTrendChartData" [options]="lineChartOptions"></canvas>
+              </div>
+
+              <ng-template #noTenantUsageTrend>
+                <div class="chart-empty chart-empty-wide">Pas assez de donnees pour dessiner la cadence quotidienne.</div>
+              </ng-template>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-row">
+            <h2>Quota</h2>
+            <button class="toggle-icon" type="button" (click)="toggleSection('tenantQuota')" [class.open]="sectionOpen.tenantQuota">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-body" *ngIf="sectionOpen.tenantQuota">
+          <div class="metric-grid">
+            <article class="metric-card" *ngFor="let card of tenantQuotaCards" [ngClass]="'accent-' + card.accent">
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+              <p>{{ card.detail }}</p>
+            </article>
+          </div>
+
+          <div class="detail-grid">
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Capacite stockage</h3>
+                  <span>Used vs available</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantQuotaCapacityChartData); else noTenantQuotaCapacity">
+                <canvas baseChart [type]="'doughnut'" [data]="tenantQuotaCapacityChartData" [options]="doughnutChartOptions"></canvas>
+              </div>
+
+              <ng-template #noTenantQuotaCapacity>
+                <div class="chart-empty">Impossible de construire la jauge de stockage.</div>
+              </ng-template>
+            </article>
+
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Pression sur les limites</h3>
+                  <span>Users, files, folders</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantQuotaLimitsChartData); else noTenantQuotaLimits">
+                <canvas baseChart [type]="'bar'" [data]="tenantQuotaLimitsChartData" [options]="percentBarChartOptions"></canvas>
+              </div>
+
+              <ng-template #noTenantQuotaLimits>
+                <div class="chart-empty">Aucune limite exploitable pour ce tenant.</div>
+              </ng-template>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-row">
+            <h2>Activite recente</h2>
+            <button class="toggle-icon" type="button" (click)="toggleSection('tenantShares')" [class.open]="sectionOpen.tenantShares">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-body" *ngIf="sectionOpen.tenantShares">
+          <div class="activity-list-grid">
+            <article class="list-card">
+              <div class="list-head">
+                <h3>Alertes</h3>
+                <span>{{ tenantRecentAlerts.length }}</span>
+              </div>
+
+              <div class="table-empty" *ngIf="tenantRecentAlerts.length === 0">
+                Pas d alerte.
+              </div>
+
+              <div class="list-body" *ngIf="tenantRecentAlerts.length > 0">
+                <article class="list-item" *ngFor="let alert of tenantRecentAlerts | slice:0:5">
+                  <div class="item-main">
+                    <strong>{{ alert.originalName }}</strong>
+                    <p>{{ getOwnerDisplayName(alert) }}</p>
+                  </div>
+                  <div class="item-meta">
+                    <span class="mini-badge tone-danger">{{ getAlertBadge(alert) }}</span>
+                    <span>{{ formatRelativeTime(alert.createdAt) }}</span>
+                  </div>
+                </article>
+              </div>
+            </article>
+
+            <article class="list-card">
+              <div class="list-head">
+                <h3>Partages</h3>
+                <span>{{ tenantRecentShares.length }}</span>
+              </div>
+
+              <div class="table-empty" *ngIf="tenantRecentShares.length === 0">
+                Aucun partage recent.
+              </div>
+
+              <div class="list-body" *ngIf="tenantRecentShares.length > 0">
+                <article class="list-item" *ngFor="let share of tenantRecentShares | slice:0:5">
+                  <div class="item-main">
+                    <strong>{{ share.fileName }}</strong>
+                    <p>{{ getShareRecipient(share) }}</p>
+                  </div>
+                  <div class="item-meta">
+                    <span class="mini-badge" [ngClass]="'tone-' + getShareTone(share.status)">{{ share.status }}</span>
+                    <span>{{ share.downloadCount }} DL</span>
+                  </div>
+                </article>
+              </div>
+            </article>
+
+            <article class="list-card">
+              <div class="list-head">
+                <h3>Tickets</h3>
+                <span>{{ tenantRecentComplaints.length }}</span>
+              </div>
+
+              <div class="table-empty" *ngIf="tenantRecentComplaints.length === 0">
+                Aucun ticket recent.
+              </div>
+
+              <div class="list-body" *ngIf="tenantRecentComplaints.length > 0">
+                <article class="list-item" *ngFor="let complaint of tenantRecentComplaints | slice:0:5">
+                  <div class="item-main">
+                    <strong>{{ complaint.ticketId }}</strong>
+                    <p>{{ complaint.requester.fullName || complaint.requester.email }}</p>
+                  </div>
+                  <div class="item-meta">
+                    <span class="mini-badge" [ngClass]="'tone-' + getComplaintTone(complaint.status)">{{ complaint.status }}</span>
+                    <span class="mini-badge" [ngClass]="'tone-' + getPriorityTone(complaint.priority)">{{ complaint.priority }}</span>
+                  </div>
+                </article>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-row">
+            <h2>Support</h2>
+            <button class="toggle-icon" type="button" (click)="toggleSection('tenantComplaints')" [class.open]="sectionOpen.tenantComplaints">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-body" *ngIf="sectionOpen.tenantComplaints">
+          <div class="metric-grid">
+            <article class="metric-card" *ngFor="let card of tenantComplaintCards" [ngClass]="'accent-' + card.accent">
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+              <p>{{ card.detail }}</p>
+            </article>
+          </div>
+
+          <div class="detail-grid">
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Status</h3>
+                  <span>Distribution</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantComplaintStatusChartData); else noTenantComplaintStatus">
+                <canvas baseChart [type]="'doughnut'" [data]="tenantComplaintStatusChartData" [options]="doughnutChartOptions"></canvas>
+              </div>
+
+              <ng-template #noTenantComplaintStatus>
+                <div class="chart-empty">Aucun ticket.</div>
+              </ng-template>
+            </article>
+
+            <article class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <h3>Priorites</h3>
+                  <span>Par niveau</span>
+                </div>
+              </div>
+
+              <div class="chart-viewport" *ngIf="hasChartData(tenantComplaintPriorityChartData); else noTenantComplaintPriority">
+                <canvas baseChart [type]="'bar'" [data]="tenantComplaintPriorityChartData" [options]="barChartOptions"></canvas>
+              </div>
+
+              <ng-template #noTenantComplaintPriority>
+                <div class="chart-empty">Aucune donnee.</div>
+              </ng-template>
+            </article>
+          </div>
+        </div>
+      </section>
+    </ng-container>
+  </ng-container>
+</div>

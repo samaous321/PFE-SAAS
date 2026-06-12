@@ -1,0 +1,23 @@
+<div class="shell">
+  <header class="topbar container card">
+    <div>
+      <p class="eyebrow">PFE Backend</p>
+      <h1>User module</h1>
+      <p class="helper">Front Angular branché sur les routes Express `/users`.</p>
+    </div>
+
+    <nav class="actions">
+      <a routerLink="/login" class="btn btn-secondary">Connexion</a>
+      <a routerLink="/register" class="btn btn-secondary">Inscription</a>
+      <a routerLink="/files" class="btn btn-secondary" *ngIf="authStorage.hasToken()">Fichiers</a>
+      <a routerLink="/users" class="btn btn-secondary">Utilisateurs</a>
+      <span class="role-pill" *ngIf="authStorage.hasToken() && isAdmin">Role: superadmin</span>
+      <span class="role-pill" *ngIf="authStorage.hasToken() && isUser">Role: user</span>
+      <button type="button" class="btn btn-danger" (click)="logout()" *ngIf="authStorage.hasToken()">Déconnexion</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <router-outlet></router-outlet>
+  </main>
+</div>

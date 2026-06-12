@@ -1,0 +1,35 @@
+<div class="admin-ai-monitoring">
+  <h2>AI Monitoring</h2>
+
+  <div *ngIf="loading">Chargement...</div>
+  <div *ngIf="errorMessage" style="color:#b00020; margin:8px 0;">{{ errorMessage }}</div>
+  <button (click)="loadAll()" [disabled]="loading">Refresh</button>
+
+  <section class="circuit">
+    <h3>Circuit Breaker</h3>
+    <pre>{{ circuit | json }}</pre>
+    <button (click)="resetCircuit()">Reset Circuit</button>
+  </section>
+
+  <section class="stats">
+    <h3>Statistics</h3>
+    <pre>{{ statistics | json }}</pre>
+  </section>
+
+  <section class="logs">
+    <h3>Recent AI Logs</h3>
+    <div *ngIf="!logs.length">Aucun log IA pour le moment.</div>
+    <table>
+      <thead><tr><th>Time</th><th>Module</th><th>Operation</th><th>Success</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let l of logs">
+          <td>{{ l.createdAt | date:'short' }}</td>
+          <td>{{ l.module }}</td>
+          <td>{{ l.operation }}</td>
+          <td>{{ l.success }}</td>
+          <td><pre>{{ l.result | json }}</pre></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>

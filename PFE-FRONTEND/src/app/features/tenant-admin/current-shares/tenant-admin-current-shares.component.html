@@ -1,0 +1,319 @@
+<section class="tenant-shares-page">
+  <header class="hero-card">
+    <div class="hero-copy">
+      <span class="eyebrow">Action Administratif</span>
+      <h1>Supervision des partages actifs</h1>
+      <p>
+        Contrôlez les partages créés dans votre tenant, suivez leur état en temps réel,
+        ouvrez les détails et révoquez ceux qui doivent être arrêtés.
+      </p>
+
+      <div class="hero-pills">
+        <span class="pill pill-active">{{ stats.activeShares }} actifs</span>
+        <span class="pill">{{ totalItems }} total</span>
+        <span class="pill pill-muted">{{ stats.totalViews }} vues</span>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="action-button secondary" (click)="refresh()">Rafraîchir</button>
+      <button type="button" class="action-button secondary" (click)="exportToCSV()">Exporter CSV</button>
+    </div>
+  </header>
+
+  <section class="metric-grid">
+    <article class="metric-card" *ngFor="let card of metricCards" [attr.data-tone]="card.tone">
+      <span class="metric-label">{{ card.label }}</span>
+      <strong class="metric-value">{{ card.value }}</strong>
+      <p>{{ card.hint }}</p>
+    </article>
+  </section>
+
+  <section class="panel filters-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Filtres</h2>
+        <p>Recherche ciblée sur les partages du tenant.</p>
+      </div>
+      <button type="button" class="text-button" (click)="resetFilters()">Réinitialiser</button>
+    </div>
+
+    <form class="filters-grid" [formGroup]="filterForm">
+      <label>
+        <span>Nom du fichier</span>
+        <input type="text" formControlName="fileName" placeholder="Recherche par nom" />
+      </label>
+
+      <label>
+        <span>Utilisateur (destinataire)</span>
+        <select formControlName="recipientUser">
+          <option value="">Tous les utilisateurs</option>
+          <option *ngFor="let u of tenantUsers" [value]="u.email">{{ u.firstName }} {{ u.lastName }} · {{ u.email }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Type de fichier</span>
+        <select formControlName="mimeType">
+          <option *ngFor="let option of mimeTypeOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Type de partage</span>
+        <select formControlName="shareType">
+          <option *ngFor="let option of shareTypeOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Date de début</span>
+        <input type="date" formControlName="startDate" />
+      </label>
+
+      <label>
+        <span>Date de fin</span>
+        <input type="date" formControlName="endDate" />
+      </label>
+
+      <label class="full-width">
+        <span>Tri</span>
+        <select formControlName="sortBy">
+          <option *ngFor="let option of sortOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+    </form>
+  </section>
+
+  <section class="panel list-panel">
+    <div class="panel-head list-head">
+      <div>
+        <h2>Partages du tenant</h2>
+        <p>{{ totalItems }} enregistrements détectés</p>
+      </div>
+      <span class="loading-chip" *ngIf="loading">Chargement…</span>
+    </div>
+
+    <div class="table-shell" *ngIf="hasResults; else emptyState">
+      <div class="share-row share-row-head">
+        <span>Fichier</span>
+        <span>Propriétaire</span>
+        <span>Type</span>
+        <span>État</span>
+        <span>Activité</span>
+        <span>Date</span>
+        <span>Actions</span>
+      </div>
+
+      <article class="share-row" *ngFor="let share of shares; trackBy: trackByShareId">
+        <div class="file-cell">
+          <span class="file-icon">{{ getMimeLabel(share.mimeType).slice(0, 1) }}</span>
+          <div>
+            <strong>{{ share.fileName }}</strong>
+            <p>{{ getMimeLabel(share.mimeType) }} · {{ formatFileSize(share.fileSize) }}</p>
+          </div>
+        </div>
+
+        <div class="meta-cell">
+          <strong>{{ getOwnerLabel(share) }}</strong>
+          <p>{{ getRecipientPreview(share) }}</p>
+        </div>
+
+        <div class="badges">
+          <span class="badge">{{ getShareTypeLabel(normalizeShareType(share.shareType)) }}</span>
+          <span class="badge muted">{{ share.accessLevel }}</span>
+        </div>
+
+        <div class="badges">
+          <span class="status-pill" [attr.data-tone]="getStatusTone(share.status)">{{ getStatusLabel(share.status) }}</span>
+          <span class="badge muted">{{ getExpiryBadge(share) }}</span>
+        </div>
+
+        <div class="activity-cell">
+          <strong>{{ share.downloadCount }} téléchargements</strong>
+          <p>{{ share.viewCount }} vues · engagement {{ getEngagementRate(share) }}%</p>
+        </div>
+
+        <div class="meta-cell">
+          <strong>{{ formatDate(share.createdAt) }}</strong>
+          <p>{{ getDaysSinceCreation(share) }} jour(s) actif(s)</p>
+        </div>
+
+        <div class="row-actions">
+          <button type="button" class="icon-action icon-action-soft" (click)="viewDetails(share)" title="Voir les détails" aria-label="Voir les détails">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6zm10 3.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5z"/></svg>
+          </button>
+          <button type="button" class="icon-action icon-action-soft" (click)="copyShareLink(share)" [disabled]="!share.shareUrl" title="Copier le lien" aria-label="Copier le lien">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4v-2h4V5h-8v4H9z"/><path d="M5 9h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm0 2v8h8v-8H5z"/></svg>
+          </button>
+          <button type="button" class="icon-action icon-action-soft" (click)="openVirusTotal(share)" title="Analyser sur VirusTotal" aria-label="Analyser sur VirusTotal">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v12l8 4 8-4V6l-8-4zm0 2.2 5.8 2.9L12 10 6.2 7.1 12 4.2zm-6 4.5 5 2.5v8.1l-5-2.5V8.7zm7 10.6v-8.1l5-2.5v8.1l-5 2.5z"/></svg>
+          </button>
+          <button type="button" class="icon-action danger" (click)="openRevokeModal(share)" [disabled]="share.status !== 'active'" title="Révoquer" aria-label="Révoquer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v8h-2V9zm4 0h2v8h-2V9zM6 9h2v8H6V9z"/></svg>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <ng-template #emptyState>
+      <div class="empty-state">
+        <strong>Aucun partage trouvé</strong>
+        <p>Affinez vos filtres ou changez l’état sélectionné.</p>
+      </div>
+    </ng-template>
+
+    <div class="pagination-bar" *ngIf="totalPages > 1">
+      <button type="button" class="page-button" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">Précédent</button>
+      <span>Page {{ currentPage }} / {{ totalPages }}</span>
+      <button type="button" class="page-button" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">Suivant</button>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" *ngIf="showDetailsModal || showRevokeModal" (click)="closeDetailsModal(); closeRevokeModal()"></div>
+
+  <section class="modal-shell details-modal" *ngIf="showDetailsModal">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Analyse</span>
+        <h2>{{ selectedShareDetails?.fileName || 'Détails du partage' }}</h2>
+      </div>
+      <button type="button" class="icon-close" (click)="closeDetailsModal()">✕</button>
+    </div>
+
+    <div class="modal-loading" *ngIf="detailsLoading">Chargement des informations…</div>
+
+    <ng-container *ngIf="!detailsLoading && selectedShareDetails as share">
+      <div class="detail-summary-grid">
+        <article>
+          <span>Statut</span>
+          <strong>{{ getStatusLabel(share.status) }}</strong>
+        </article>
+        <article>
+          <span>Type</span>
+          <strong>{{ getShareTypeLabel(normalizeShareType(share.shareType)) }}</strong>
+        </article>
+        <article>
+          <span>Format</span>
+          <strong>{{ getMimeLabel(share.mimeType) }}</strong>
+        </article>
+        <article>
+          <span>Lien</span>
+          <strong>{{ share.shareUrl ? 'Disponible' : 'Non enregistré' }}</strong>
+        </article>
+        <article>
+          <span>Téléchargements</span>
+          <strong>{{ share.downloadCount }}</strong>
+        </article>
+        <article>
+          <span>Destinataire(s)</span>
+          <strong *ngIf="getRecipientList(share).length; else noRecipients">{{ getRecipientList(share).length }}</strong>
+          <ng-template #noRecipients><strong>Aucun</strong></ng-template>
+        </article>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h3>Informations structurées</h3>
+          <dl>
+            <div><dt>Fichier</dt><dd>{{ share.fileName }}</dd></div>
+            <div><dt>Identifiant partage</dt><dd>{{ share.shareId }}</dd></div>
+            <div><dt>Taille</dt><dd>{{ formatFileSize(share.fileSize) }}</dd></div>
+            <div><dt>Hash fichier</dt><dd>{{ share.fileHash || 'Non disponible' }}</dd></div>
+            <div><dt>Créé par</dt><dd>{{ getOwnerLabel(share) }}</dd></div>
+            <div><dt>Propriétaire tenant</dt><dd>{{ share.sharedBy?.tenantId || 'Non défini' }}</dd></div>
+            <div><dt>Destinataire</dt><dd>
+              <ng-container *ngIf="getRecipientList(share).length; else singleRecipient">
+                <ul class="recipient-list">
+                  <li *ngFor="let r of getRecipientList(share)">{{ r }}</li>
+                </ul>
+              </ng-container>
+              <ng-template #singleRecipient>{{ getRecipientLabel(share) }}</ng-template>
+            </dd></div>
+            <div><dt>Destinataire interne</dt><dd>{{ share.sharedWith?.externalUser ? 'Non' : 'Oui' }}</dd></div>
+            <div><dt>Niveau d’accès</dt><dd>{{ share.accessLevel }}</dd></div>
+            <div><dt>Nb. téléchargements</dt><dd>{{ share.downloadCount }}</dd></div>
+            <div><dt>Nb. vues</dt><dd>{{ share.viewCount }}</dd></div>
+            <div><dt>Interactions totales</dt><dd>{{ getTotalInteractions(share) }}</dd></div>
+            <div><dt>Créé le</dt><dd>{{ formatDate(share.createdAt) }}</dd></div>
+            <div><dt>Dernier accès</dt><dd>{{ share.lastAccessedAt ? formatDate(share.lastAccessedAt) : 'Jamais' }}</dd></div>
+            <div><dt>Expiration</dt><dd>{{ share.expiresAt ? formatDate(share.expiresAt) : 'Aucune' }}</dd></div>
+            <div><dt>Mot de passe</dt><dd>{{ share.hasPassword ? 'Activé' : 'Désactivé' }}</dd></div>
+            <div><dt>Max téléchargements</dt><dd>{{ share.maxDownloads || 'Illimité' }}</dd></div>
+          </dl>
+        </div>
+
+        <div class="detail-card accent">
+          <h3>Analyse IA et scoring</h3>
+          <div class="analysis-ring" [style.--score]="getAiSecurityScore(share)">
+            <strong>{{ getAiSecurityScore(share) }}</strong>
+            <span>score sécurité</span>
+          </div>
+          <span class="ai-risk-badge" [attr.data-tone]="getAiScoreTone(getAiSecurityScore(share))">{{ getAiScoreLabel(getAiSecurityScore(share)) }}</span>
+          <div class="analysis-lines">
+            <p><span>Consultations</span><strong>{{ share.viewCount }}</strong></p>
+            <p><span>Téléchargements</span><strong>{{ share.downloadCount }}</strong></p>
+            <p><span>Durée</span><strong>{{ getDaysSinceCreation(share) }} jour(s)</strong></p>
+            <p><span>Expiration</span><strong>{{ getExpiryBadge(share) }}</strong></p>
+            <p><span>Engagement</span><strong>{{ getEngagementRate(share) }}%</strong></p>
+          </div>
+          <div class="analysis-insights">
+            <article *ngFor="let insight of getAiInsights(share)">
+              <span class="insight-dot"></span>
+              <p>{{ insight }}</p>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <div class="link-panel">
+        <div>
+          <span class="eyebrow">Lien direct</span>
+          <strong>{{ share.shareUrl || 'Aucun lien enregistré' }}</strong>
+        </div>
+        <div class="detail-actions">
+          <button type="button" class="action-button" (click)="copyShareLink(share)" [disabled]="!share.shareUrl">Copier le lien</button>
+          <button type="button" class="action-button secondary" (click)="openVirusTotal(share)">VirusTotal</button>
+        </div>
+      </div>
+
+      <div class="audit-panel" *ngIf="share.auditTrail?.length">
+        <h3>Historique d’audit</h3>
+        <div class="audit-list">
+          <article *ngFor="let entry of share.auditTrail | slice:0:4">
+            <strong>{{ entry.action }}</strong>
+            <p>{{ formatDate(entry.timestamp) }}</p>
+          </article>
+        </div>
+      </div>
+    </ng-container>
+  </section>
+
+  <section class="modal-shell revoke-modal" *ngIf="showRevokeModal">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Révocation</span>
+        <h2>Supprimer l’accès au partage</h2>
+      </div>
+      <button type="button" class="icon-close" (click)="closeRevokeModal()">✕</button>
+    </div>
+
+    <p class="modal-copy" *ngIf="selectedShare">
+      {{ selectedShare.fileName }} sera révoqué pour {{ getRecipientLabel(selectedShare) }}.
+    </p>
+
+    <form [formGroup]="revokeForm" class="revoke-form" (ngSubmit)="revokeShare()">
+      <label>
+        <span>Raison</span>
+        <textarea rows="4" formControlName="reason" placeholder="Expliquez brièvement pourquoi le partage doit être révoqué"></textarea>
+      </label>
+
+      <div class="form-actions">
+        <button type="button" class="action-button secondary" (click)="closeRevokeModal()">Annuler</button>
+        <button type="submit" class="action-button danger" [disabled]="revokeLoading">
+          {{ revokeLoading ? 'Révocation…' : 'Révoquer le partage' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</section>

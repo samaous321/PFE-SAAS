@@ -1,0 +1,51 @@
+<section class="auth-layout">
+  <div class="card auth-panel">
+    <p class="eyebrow">Vérification</p>
+    <h2>Confirmer ton email</h2>
+
+    <p class="helper">
+      {{ userId ? 'Entre le code reçu pour vérifier ton compte.' : 'Saisis l\'email utilisé à l\'inscription et le code reçu par email.' }}
+    </p>
+
+    <!-- Tenant Information Banner -->
+    <div *ngIf="tenantDomain" class="tenant-info-banner" [class.new-tenant]="isNewTenant">
+      <div class="banner-icon">
+        <svg *ngIf="isNewTenant" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+        <svg *ngIf="!isNewTenant" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <div class="banner-content">
+        <strong>{{ isNewTenant ? 'Nouveau tenant créé' : 'Tenant existant' }}</strong>
+        <p>{{ isNewTenant ? 'Vous deviendrez admin du tenant ' : 'Vous avez été ajouté au tenant ' }}<strong>{{ tenantDomain }}</strong></p>
+      </div>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="grid">
+      <label class="field" *ngIf="!userId">
+        <span>Email</span>
+        <input type="email" formControlName="email" placeholder="user@domain.com">
+      </label>
+
+      <label class="field">
+        <span>Code de vérification</span>
+        <input type="text" formControlName="verificationCode" placeholder="12345">
+      </label>
+
+      <button class="btn btn-primary" type="submit" [disabled]="loading">
+        {{ loading ? 'Vérification...' : 'Vérifier mon compte' }}
+      </button>
+
+      <button type="button" class="btn btn-secondary" (click)="resendCode()" [disabled]="loading">
+        Renvoyer le code
+      </button>
+    </form>
+
+    <p class="success" *ngIf="success">{{ success }}</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <a routerLink="/login" class="btn btn-primary">Retour à la connexion</a>
+  </div>
+</section>

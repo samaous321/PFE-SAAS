@@ -1,0 +1,1159 @@
+﻿<div class="file-workspace">
+  <div class="workspace-right">
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="header-content">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+            </svg>
+          </div>
+          <div class="header-text">
+            <h1 *ngIf="isAdmin">Gestion des fichiers du tenant</h1>
+            <h1 *ngIf="!isAdmin">Mes fichiers sécurisés</h1>
+            <p *ngIf="isAdmin">Administration et supervision des fichiers du tenant</p>
+            <p *ngIf="!isAdmin">Gérez vos fichiers chiffrés en toute sécurité</p>
+          </div>
+          <div class="header-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            AES-256
+          </div>
+        </div>
+
+        <div class="welcome-banner" *ngIf="displayName">
+          <div class="welcome-pill">Bienvenue</div>
+          <div class="welcome-main">
+            <h2>{{ welcomeTitle }}</h2>
+            <p>{{ welcomeSubtitle }}</p>
+          </div>
+          <div class="welcome-mark" aria-hidden="true">👋</div>
+        </div>
+      </div>
+
+      <!-- Search Component -->
+      <app-search (resultSelected)="onSearchResultSelected($event)"></app-search>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-section" *ngIf="!loading">
+      <div class="stats-grid">
+        <div class="stat-card primary">
+          <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ stats.totalFiles }}</div>
+            <div class="stat-label">{{ isAdmin ? "Fichiers du tenant" : "Mes fichiers" }}</div>
+            <div class="stat-trend" *ngIf="stats.recentUploads > 0">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              +{{ stats.recentUploads }} cette semaine
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card secondary">
+          <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7,10 12,15 17,10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ formatBytes(stats.totalSize) }}</div>
+            <div class="stat-label">{{ isAdmin ? "Stockage du tenant" : "Espace utilisé" }}</div>
+            <div class="stat-progress">
+              <div class="progress-bar" [style.width.%]="stats.storageUsedPercent"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card success">
+          <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ stats.sharedFiles }}</div>
+            <div class="stat-label">{{ isAdmin ? "Partages actifs" : "Fichiers partagés" }}</div>
+            <div class="stat-trend">Liens actifs</div>
+          </div>
+        </div>
+
+        <div class="stat-card info">
+          <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path>
+              <polyline points="17,8 12,3 7,8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ stats.downloadsCount }}</div>
+            <div class="stat-label">{{ isAdmin ? "Téléchargements du tenant" : "Vos téléchargements" }}</div>
+            <div class="stat-trend">Total des accès</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+      <div class="upload-card" [class.is-uploading]="busy && !!selectedFile">
+        <div class="upload-header">
+          <div class="upload-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17,8 12,3 7,8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <div class="upload-content">
+            <h3>Uploader un nouveau fichier</h3>
+            <p>Fichiers chiffrés automatiquement avec AES-256</p>
+          </div>
+        </div>
+
+        <div class="quota-banner" *ngIf="quotaSummary">
+          <div class="quota-banner-head">
+            <strong>Quota {{ quotaSummary.plan }}</strong>
+            <span class="quota-pill">{{ quotaSummary.scope }}</span>
+          </div>
+          <div class="quota-banner-body">
+            {{ formatBytes(quotaSummary.user.storageUsedBytes) }} / {{ formatBytes(quotaSummary.user.storageLimitBytes || quotaSummary.tenant.storageLimitBytes || 0) }} utilisés
+          </div>
+          <div class="stat-progress quota-progress">
+            <div class="progress-bar" [class.warning]="quotaAlertLevel === 'warning'" [class.danger]="quotaAlertLevel === 'danger'" [style.width.%]="quotaPercent"></div>
+          </div>
+          <p class="quota-note" [ngClass]="'quota-note-' + quotaAlertLevel">
+            {{ quotaAlertMessage }}
+          </p>
+        </div>
+
+        <div class="upload-form">
+          <div class="file-input-wrapper">
+            <input
+              type="file"
+              id="file-upload"
+              (change)="onFilePicked($event)"
+              class="file-input"
+              accept="*/*"
+            />
+            <label for="file-upload" class="file-input-label">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+              </svg>
+              <span>{{ selectedFile ? selectedFile.name : 'Choisir un fichier' }}</span>
+            </label>
+          </div>
+
+          <button
+            class="btn btn-primary btn-upload"
+            type="button"
+            (click)="upload()"
+            [disabled]="busy || !selectedFile"
+          >
+            <span *ngIf="!busy">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Uploader
+            </span>
+            <span *ngIf="busy" class="loading-spinner">
+              <span class="spinner-dot"></span>
+              Upload en cours...
+            </span>
+          </button>
+
+          
+        </div>
+        <div class="upload-progress-panel" *ngIf="showUploadProgress">
+            <div class="upload-progress-header">
+              <span>{{ uploadMessage }}</span>
+              <strong>
+                {{ uploadStage === 'uploading' ? uploadProgress + '%' : uploadStage === 'completed' ? 'Terminé' : uploadStage === 'error' ? 'Erreur' : '' }}
+              </strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" [style.width.%]="uploadProgress"></div>
+            </div>
+            <p class="upload-stage-text" *ngIf="uploadStage === 'scanning'">
+              Le fichier est en cours de scan et d’analyse de sécurité. Cela peut prendre quelques secondes.
+            </p>
+          </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs and Sidebar Container -->
+    <div class="tabs-sidebar-container modern-layout" [ngClass]="{ 'sidebar-hidden': !showFolders }">
+
+      <!-- Left Column: Folder Tree Sidebar -->
+      <div class="left-sidebar-column" *ngIf="showFolders">
+        <div class="sidebar-panel">
+          <div class="sidebar-panel-header">
+            <div class="sidebar-title">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+              </svg>
+              <span>Arborescence</span>
+            </div>
+            <button
+              type="button"
+              class="sidebar-toggle-btn"
+              (click)="toggleFolders()"
+              [attr.aria-label]="showFolders ? 'Masquer l’arborescence' : 'Afficher l’arborescence'"
+              title="{{ showFolders ? 'Masquer l’arborescence' : 'Afficher l’arborescence' }}"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="toggle-icon" width="16" height="16">
+                <path *ngIf="showFolders" d="M15 18l-6-6 6-6" />
+                <path *ngIf="!showFolders" d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+          <div class="folders-content">
+            <div class="folders-scroll">
+              <app-folder-tree
+                [folders]="userFolders"
+                [files]="files"
+                [currentFolderId]="currentFolderId"
+                [selectedFolderId]="selectedFolderId"
+                (folderSelected)="onFolderSelected($event)"
+                (folderCreated)="onFolderCreated($event)"
+                (folderRenamed)="onFolderRenamed($event)"
+                (folderDeleted)="onFolderDeleted($event)">
+              </app-folder-tree>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Tabs and Files -->
+      <div class="right-content-column">
+        <div class="top-panel">
+          <div class="tabs-section">
+            <div class="tabs">
+              <button
+                class="tab"
+                [class.active]="activeTab === 'files'"
+                (click)="setActiveTab('files')"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path></svg>
+                <span>{{ isAdmin ? "Fichiers" : "Mes fichiers" }}</span>
+                <span class="tab-count">{{ sortedDisplayedFiles.length }}</span>
+              </button>
+
+              <button
+                class="tab"
+                [class.active]="activeTab === 'shared-with-me'"
+                (click)="setActiveTab('shared-with-me')"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                <span>Partagés avec moi</span>
+                <span class="tab-count">{{ sortedDisplayedSharedWithMe.length }}</span>
+              </button>
+
+              <button
+                class="tab"
+                [class.active]="activeTab === 'shared-by-me'"
+                (click)="setActiveTab('shared-by-me')"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" fill="none"/><path d="M16 6l-4-4-4 4" fill="none"/><path d="M12 2v11" fill="none"/></svg>
+                <span>Partagés par moi</span>
+                <span class="tab-count">{{ sharedByMe.length }}</span>
+              </button>
+
+              <button
+                class="tab"
+                [class.active]="activeTab === 'trash'"
+                (click)="setActiveTab('trash')"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <span>Corbeille</span>
+                <span class="tab-count">{{ sortedDisplayedHiddenSharedWithMe.length }}</span>
+              </button>
+            </div>
+
+            <div class="tabs-controls">
+              <div class="search-panel" *ngIf="!loading">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon" width="15" height="15">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input
+                  type="text"
+                  [value]="searchQuery"
+                  (input)="onSearchInput($event)"
+                  placeholder="Rechercher un fichier, dossier..."
+                />
+              </div>
+
+              <button class="btn-advanced" type="button" (click)="toggleAdvancedFilters()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <line x1="4" y1="6" x2="20" y2="6"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                  <line x1="11" y1="18" x2="13" y2="18"></line>
+                </svg>
+                {{ showAdvancedFilters ? "Masquer" : "Filtres" }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Notifications Section -->
+        <div class="global-notifications-section">
+          <div class="action-toast-wrapper" *ngIf="success || error">
+            <div class="action-toast" [ngClass]="{ 'success': success && !error, 'error': error && !success }">
+              <div class="toast-icon">
+                <svg *ngIf="success && !error" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <svg *ngIf="error && !success" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+
+              <div class="toast-content">
+                <div class="toast-header">
+                  <h4 class="toast-title">{{ success && !error ? 'Opération réussie' : 'Erreur survenue' }}</h4>
+                  <span class="toast-timestamp">{{ getCurrentTime() }}</span>
+                </div>
+                <p class="toast-message">{{ success || error }}</p>
+              </div>
+
+              <button type="button" class="toast-close" aria-label="Fermer la notification" (click)="clearNotifications()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-panel">
+          <div class="loading-state" *ngIf="loading">
+            <div class="spinner"></div>
+            <p>Chargement des fichiers...</p>
+          </div>
+
+          <!-- FILES TAB -->
+          <div class="files-section" *ngIf="!loading && activeTab === 'files'">
+
+            <div class="folder-path">
+              <button type="button" class="breadcrumb-link" (click)="onFolderSelected(null)" [class.active]="selectedFolderId === null">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                Tous les fichiers
+              </button>
+              <ng-container *ngIf="selectedFolderId !== null">
+                <span class="breadcrumb-separator">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </span>
+                <ng-container *ngFor="let folder of currentFolderPath; let last = last">
+                  <button
+                    type="button"
+                    class="breadcrumb-link"
+                    [disabled]="last"
+                    (click)="onFolderSelected(folder._id)"
+                  >
+                    {{ folder.name }}
+                  </button>
+                  <span class="breadcrumb-separator" *ngIf="!last">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </span>
+                </ng-container>
+              </ng-container>
+            </div>
+
+            <div class="files-header">
+              <div class="files-header-left">
+                <h3>{{ isAdmin ? "Fichiers du tenant" : "Vos fichiers" }}</h3>
+                <span class="files-count-badge">{{ sortedDisplayedFiles.length }} fichier{{ sortedDisplayedFiles.length > 1 ? 's' : '' }}</span>
+              </div>
+            </div>
+
+            <div class="folder-browser" *ngIf="currentFolderChildren.length > 0 || selectedFolderId !== null || pagedDisplayedFiles.length > 0">
+              <div class="folder-browser-header">
+                <div class="folder-browser-title">
+                  <strong>{{ selectedFolderId ? "Contenu du dossier" : "Dossiers et fichiers" }}</strong>
+                  <div class="folder-browser-meta">
+                    {{ currentFolderChildren.length }} dossier{{ currentFolderChildren.length > 1 ? "s" : "" }}, {{ sortedDisplayedFiles.length }} fichier{{ sortedDisplayedFiles.length > 1 ? "s" : "" }}
+                  </div>
+                </div>
+                <button *ngIf="selectedFolderId !== null" type="button" class="btn btn-sm btn-ghost" (click)="onFolderSelected(null)">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  Retour à la racine
+                </button>
+              </div>
+
+              <div class="folder-cards" *ngIf="currentFolderChildren.length > 0">
+                <div
+                  class="folder-card root-card"
+                  *ngIf="selectedFolderId !== null"
+                  (click)="onFolderSelected(null)"
+                  (dragover)="onSpaceDragOver($event)"
+                  (drop)="onSpaceDrop('', $event)"
+                >
+                  <div class="folder-card-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  </div>
+                  <div class="folder-card-content">
+                    <div class="folder-card-title">Racine</div>
+                    <div class="folder-card-subtitle">Retour</div>
+                  </div>
+                </div>
+
+                <div
+                  class="folder-card"
+                  *ngFor="let folder of currentFolderChildren"
+                  (click)="onFolderSelected(folder._id)"
+                  (dragover)="onSpaceDragOver($event)"
+                  (drop)="onSpaceDrop(folder._id, $event)"
+                >
+                  <div class="folder-card-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                  </div>
+                  <div class="folder-card-content">
+                    <div class="folder-card-title">{{ folder.name }}</div>
+                    <div class="folder-card-subtitle">{{ getSpaceCount(folder._id) }} fichier{{ getSpaceCount(folder._id) > 1 ? "s" : "" }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Files list -->
+              <div class="files-in-folder" *ngIf="pagedDisplayedFiles.length > 0">
+                <div class="files-list-header">
+                  <h4>Fichiers {{ selectedFolderId ? "dans ce dossier" : "racine" }}</h4>
+
+                  <div class="list-controls" *ngIf="showAdvancedFilters">
+                    <div class="page-size-control">
+                      <span>Par page</span>
+                      <select [value]="filesPageSize" (change)="onFilesPageSizeChange($event)">
+                        <option [value]="6">6</option>
+                        <option [value]="8">8</option>
+                        <option [value]="12">12</option>
+                        <option [value]="16">16</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="files-list">
+                  <div class="file-row file-row-header">
+                    <button class="header-sort" type="button" (click)="toggleFilesSort('name')">
+                      <span>Fichier</span>
+                      <span class="sort-icon">{{ getFilesSortIcon('name') }}</span>
+                    </button>
+                    <button class="header-sort" type="button" (click)="toggleFilesSort('size')">
+                      <span>Taille</span>
+                      <span class="sort-icon">{{ getFilesSortIcon('size') }}</span>
+                    </button>
+                    <button class="header-sort" type="button" (click)="toggleFilesSort('date')">
+                      <span>Date</span>
+                      <span class="sort-icon">{{ getFilesSortIcon('date') }}</span>
+                    </button>
+                    <span>Actions</span>
+                  </div>
+
+                  <div
+                    class="file-row"
+                    *ngFor="let file of pagedDisplayedFiles"
+                    [class.is-optimistic]="file._id?.startsWith('temp-')"
+                    [class.is-dragging]="draggedFileId === file._id"
+                    draggable="true"
+                    (dragstart)="onFileDragStart(file)"
+                    (dragend)="onFileDragEnd()"
+                  >
+                    <div class="file-name">
+                      <span class="file-type-icon">{{ getFileIcon(file) }}</span>
+                      <span class="file-name-text">
+                        <span class="file-title">{{ file.originalName }}</span>
+                        <span class="file-meta-inline" *ngIf="hasAiMetadata(file)">
+                          <span class="meta-chip" [ngClass]="getAiStatusClass(file)">{{ getAiStatusLabel(file) }}</span>
+                          <span class="meta-chip ai-classification" *ngIf="file.scanMetadata?.aiClassification?.classification">
+                            {{ getAiClassificationLabel(file) }}
+                          </span>
+                          <span class="meta-chip ai-risk" *ngIf="file.scanMetadata?.aiClassification?.pii_risk">
+                            PII {{ getAiRiskLabel(file) }}
+                          </span>
+                        </span>
+                        <span class="file-meta-inline" *ngIf="getApprovalBadgeLabel(file)">
+                          <span class="meta-chip" [ngClass]="getApprovalBadgeClass(file)">{{ getApprovalBadgeLabel(file) }}</span>
+                        </span>
+                        <span class="file-mobile-meta">
+                          <span class="meta-chip">{{ formatBytes(file.size || 0) }}</span>
+                          <span class="meta-chip" *ngIf="file.createdAt"> {{ formatDate(file.createdAt) }} </span>
+                          <span class="meta-chip" *ngIf="hasAiMetadata(file)" [ngClass]="getAiStatusClass(file)">
+                            {{ getAiStatusLabel(file) }}
+                          </span>
+                          <span class="meta-chip" *ngIf="getApprovalBadgeLabel(file)" [ngClass]="getApprovalBadgeClass(file)">
+                            {{ getApprovalBadgeLabel(file) }}
+                          </span>
+                        </span>
+                      </span>
+                    </div>
+                    <div class="file-meta">{{ formatBytes(file.size || 0) }}</div>
+                    <div class="file-meta">{{ file.createdAt ? formatDate(file.createdAt) : 'Date inconnue' }}</div>
+                    <div class="file-row-actions">
+                      <button class="icon-btn" type="button" title="Modifier" (click)="openFileSettings(file)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      </button>
+                      <button class="icon-btn" type="button" title="Télécharger" (click)="download(file)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      </button>
+                      <button class="icon-btn" type="button" title="Partager" (click)="openShareModal(file)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                      </button>
+                      <button class="icon-btn icon-btn-danger" type="button" title="Supprimer" (click)="remove(file)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pager" *ngIf="filesTotalPages > 1">
+                  <button class="btn btn-sm btn-ghost" type="button" (click)="prevFilesPage()" [disabled]="filesPage <= 1">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    Précédent
+                  </button>
+                  <span class="pager-info">{{ filesPage }} / {{ filesTotalPages }}</span>
+                  <button class="btn btn-sm btn-ghost" type="button" (click)="nextFilesPage()" [disabled]="filesPage >= filesTotalPages">
+                    Suivant
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
+                </div>
+              </div>
+
+              <ng-template #noFiles>
+                <div class="empty-state">
+                  <div class="empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                      <line x1="3" y1="7" x2="21" y2="7"></line>
+                    </svg>
+                  </div>
+                  <h4>Aucun fichier dans ce dossier</h4>
+                  <p>Les fichiers uploadés dans ce dossier apparaîtront ici</p>
+                </div>
+              </ng-template>
+            </div>
+
+          </div>
+
+          <!-- SHARED WITH ME TAB -->
+          <div class="files-section" *ngIf="!loading && activeTab === 'shared-with-me'">
+            <div class="files-header">
+              <div class="files-header-left">
+                <h3>Fichiers partagés avec vous</h3>
+                <span class="files-count-badge">{{ sortedDisplayedSharedWithMe.length }} fichier{{ sortedDisplayedSharedWithMe.length > 1 ? "s" : "" }}</span>
+              </div>
+            </div>
+
+            <div class="shared-filters" *ngIf="showAdvancedFilters">
+              <div class="filter-group">
+                <label>Expéditeur</label>
+                <select [value]="sharedWithMeSenderId" (change)="onSharedWithMeSenderChange($event)">
+                  <option value="">Tous</option>
+                  <option *ngFor="let sender of sharedWithMeSenderOptions" [value]="sender.id">{{ sender.label }}</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Trier</label>
+                <select [value]="sharedSortBy" (change)="onSharedSortChange($event)">
+                  <option value="date_desc">Date (plus récent)</option>
+                  <option value="date_asc">Date (plus ancien)</option>
+                  <option value="name_asc">Nom (A-Z)</option>
+                  <option value="name_desc">Nom (Z-A)</option>
+                  <option value="sender_asc">Expéditeur (A-Z)</option>
+                  <option value="sender_desc">Expéditeur (Z-A)</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Par page</label>
+                <select [value]="sharedPageSize" (change)="onSharedPageSizeChange($event)">
+                  <option [value]="4">4</option>
+                  <option [value]="6">6</option>
+                  <option [value]="10">10</option>
+                </select>
+              </div>
+              <button class="btn btn-sm btn-ghost" type="button" (click)="resetSharedWithMeFilters()" [disabled]="!sharedWithMeSenderId">
+                Réinitialiser
+              </button>
+            </div>
+
+            <div class="shared-grid" *ngIf="pagedDisplayedSharedWithMe.length > 0; else noSharedWithMe">
+              <div class="shared-card" *ngFor="let shared of pagedDisplayedSharedWithMe" [class.is-scanning]="shared.scanStatus === 'scanning'">
+                <div class="shared-card-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path>
+                    <polyline points="17,8 12,3 7,8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                </div>
+                <div class="shared-info">
+                  <h4>{{ shared.file.originalName }}</h4>
+                  <p class="shared-by">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Partagé par {{ shared.sharedBy?.firstName }} {{ shared.sharedBy?.lastName }}
+                  </p>
+                  <div class="shared-warning" *ngIf="isSharedFileSuspicious(shared)">
+                    <span class="warning-pill">{{ getSharedFileRiskLabel(shared) }}</span>
+                  </div>
+                  <div class="shared-note" *ngIf="shared.shareSubject || shared.shareDescription">
+                    <strong *ngIf="shared.shareSubject">{{ shared.shareSubject }}</strong>
+                    <p *ngIf="shared.shareDescription">{{ shared.shareDescription }}</p>
+                  </div>
+                  <div class="shared-meta">
+                    <span class="meta-chip">{{ formatBytes(shared.file.size || 0) }}</span>
+                    <span class="meta-chip">Expire le {{ formatDate(shared.expiresAt) }}</span>
+                  </div>
+                </div>
+                <div class="shared-actions">
+                  <button
+                    class="btn btn-sm btn-ghost"
+                    [class.btn-loading]="shared.scanStatus === 'scanning'"
+                    (click)="scanSharedFile(shared)"
+                    type="button"
+                    [disabled]="shared.scanStatus === 'scanning'"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+                    <span *ngIf="shared.scanStatus !== 'scanning'">Réanalyser</span>
+                    <span *ngIf="shared.scanStatus === 'scanning'">Analyse...</span>
+                  </button>
+                  <button class="btn btn-sm btn-primary" (click)="downloadSharedFile(shared)" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Télécharger
+                  </button>
+                  <button class="btn btn-sm btn-ghost btn-danger-ghost" (click)="hideSharedForMe(shared)" type="button">
+                    Supprimer
+                  </button>
+                </div>
+                <div class="shared-scan-note" *ngIf="shared.scanError">
+                  {{ shared.scanError }}
+                </div>
+              </div>
+            </div>
+
+            <div class="pager" *ngIf="sharedTotalPages > 1">
+              <button class="btn btn-sm btn-ghost" type="button" (click)="prevSharedPage()" [disabled]="sharedPage <= 1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Précédent
+              </button>
+              <span class="pager-info">{{ sharedPage }} / {{ sharedTotalPages }}</span>
+              <button class="btn btn-sm btn-ghost" type="button" (click)="nextSharedPage()" [disabled]="sharedPage >= sharedTotalPages">
+                Suivant
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+
+            <ng-template #noSharedWithMe>
+              <div class="empty-state">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+                <h4>Aucun fichier partagé</h4>
+                <p>Les fichiers partagés avec vous apparaîtront ici</p>
+              </div>
+            </ng-template>
+          </div>
+
+          <!-- TRASH TAB -->
+          <div class="files-section" *ngIf="!loading && activeTab === 'trash'">
+            <div class="files-header">
+              <div class="files-header-left">
+                <h3>Corbeille locale</h3>
+                <span class="files-count-badge">{{ sortedDisplayedHiddenSharedWithMe.length }} élément{{ sortedDisplayedHiddenSharedWithMe.length > 1 ? "s" : "" }}</span>
+              </div>
+            </div>
+
+            <div class="list-controls compact" *ngIf="showAdvancedFilters">
+              <div class="filter-group">
+                <label>Trier</label>
+                <select [value]="trashSortBy" (change)="onTrashSortChange($event)">
+                  <option value="date_desc">Date (plus récent)</option>
+                  <option value="date_asc">Date (plus ancien)</option>
+                  <option value="name_asc">Nom (A-Z)</option>
+                  <option value="name_desc">Nom (Z-A)</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Par page</label>
+                <select [value]="trashPageSize" (change)="onTrashPageSizeChange($event)">
+                  <option [value]="4">4</option>
+                  <option [value]="6">6</option>
+                  <option [value]="10">10</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="shared-grid" *ngIf="pagedDisplayedHiddenSharedWithMe.length > 0; else noTrashItems">
+              <div class="shared-card trash-card" *ngFor="let shared of pagedDisplayedHiddenSharedWithMe">
+                <div class="shared-card-icon trash-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </div>
+                <div class="shared-info">
+                  <h4>{{ shared.file.originalName }}</h4>
+                  <p class="shared-by">Masqué localement depuis votre espace</p>
+                  <div class="shared-meta">
+                    <span class="meta-chip">{{ formatBytes(shared.file.size || 0) }}</span>
+                    <span class="meta-chip">Expire le {{ formatDate(shared.expiresAt) }}</span>
+                  </div>
+                </div>
+                <div class="shared-actions">
+                  <button class="btn btn-sm btn-primary" type="button" (click)="restoreSharedForMe(shared)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-4"></path></svg>
+                    Restaurer
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="pager" *ngIf="trashTotalPages > 1">
+              <button class="btn btn-sm btn-ghost" type="button" (click)="prevTrashPage()" [disabled]="trashPage <= 1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Précédent
+              </button>
+              <span class="pager-info">{{ trashPage }} / {{ trashTotalPages }}</span>
+              <button class="btn btn-sm btn-ghost" type="button" (click)="nextTrashPage()" [disabled]="trashPage >= trashTotalPages">
+                Suivant
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+
+            <ng-template #noTrashItems>
+              <div class="empty-state">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </div>
+                <h4>Corbeille vide</h4>
+                <p>Les éléments masqués ou supprimés réapparaîtront ici.</p>
+              </div>
+            </ng-template>
+          </div>
+
+          <!-- SHARED BY ME TAB -->
+          <div class="files-section" *ngIf="!loading && activeTab === 'shared-by-me'">
+            <div class="files-header">
+              <div class="files-header-left">
+                <h3>Fichiers partagés par vous</h3>
+                <span class="files-count-badge">{{ sharedByMe.length }} partage{{ sharedByMe.length > 1 ? "s" : "" }}</span>
+              </div>
+            </div>
+
+            <div class="list-controls compact" *ngIf="showAdvancedFilters">
+              <div class="filter-group">
+                <label>Trier</label>
+                <select [value]="sharedByMeSortBy" (change)="onSharedByMeSortChange($event)">
+                  <option value="date_desc">Date (plus récent)</option>
+                  <option value="date_asc">Date (plus ancien)</option>
+                  <option value="name_asc">Nom (A-Z)</option>
+                  <option value="name_desc">Nom (Z-A)</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Par page</label>
+                <select [value]="sharedByMePageSize" (change)="onSharedByMePageSizeChange($event)">
+                  <option [value]="4">4</option>
+                  <option [value]="6">6</option>
+                  <option [value]="10">10</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="shared-by-me-grid" *ngIf="sharedByMe.length > 0; else noSharedByMe">
+              <div class="shared-by-me-card" *ngFor="let shared of sharedByMe">
+                <div class="shared-card-header">
+                  <div class="file-info">
+                    <span class="file-icon-lg">{{ getFileIcon(shared.file) }}</span>
+                    <div class="file-details">
+                      <h4>{{ shared.file.originalName }}</h4>
+                      <div class="file-meta-row">
+                        <span class="meta-chip">{{ formatBytes(shared.file.size || 0) }}</span>
+                        <span class="meta-chip">Partagé le {{ shared.createdAt ? formatDate(shared.createdAt) : 'Date inconnue' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="share-status">
+                    <span class="status-badge" [class]="'status-' + getShareStatus(shared)">
+                      {{ getShareStatusText(shared) }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="share-details">
+                  <div class="share-info-grid">
+                    <div class="share-info-item">
+                      <span class="info-label">Destinataires</span>
+                      <span class="info-value">
+                        <span *ngIf="shared.recipientUsers && shared.recipientUsers.length > 0">{{ getRecipientNames(shared) }}</span>
+                        <span *ngIf="(!shared.recipientUsers || shared.recipientUsers.length === 0) && shared.recipientEmail">{{ shared.recipientEmail }}</span>
+                        <span *ngIf="(!shared.recipientUsers || shared.recipientUsers.length === 0) && !shared.recipientEmail" class="public-link-badge">Lien public</span>
+                      </span>
+                    </div>
+                    <div class="share-info-item">
+                      <span class="info-label">Expiration</span>
+                      <span class="info-value">{{ formatDate(shared.expiresAt) }}</span>
+                    </div>
+                    <div class="share-info-item">
+                      <span class="info-label">Utilisations</span>
+                      <span class="info-value">{{ shared.usedCount || 0 }} / {{ shared.maxUses }}</span>
+                    </div>
+                    <div class="share-info-item">
+                      <span class="info-label">Téléchargements</span>
+                      <span class="info-value">{{ getDownloadCount(shared) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="share-actions">
+                    <button class="btn btn-sm btn-ghost" type="button" (click)="copyShareLink(shared)" *ngIf="shared.shareUrl">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                      Copier lien
+                    </button>
+                    <button class="btn btn-sm btn-ghost" type="button" (click)="viewShareDetails(shared)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      Détails
+                    </button>
+                    <button class="btn btn-sm btn-danger" type="button" (click)="revokeShare(shared)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                      Annuler partage
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <ng-template #noSharedByMe>
+              <div class="empty-state">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                  </svg>
+                </div>
+                <h4>Aucun partage actif</h4>
+                <p>Les fichiers que vous partagez apparaîtront ici</p>
+              </div>
+            </ng-template>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- File Settings Modal -->
+<div class="modal-backdrop" *ngIf="showFileSettingsModal" (click)="closeFileSettings()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-header-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </div>
+        <div>
+          <h3>Paramètres du fichier</h3>
+          <p class="modal-subtitle">{{ editingFile?.originalName }}</p>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeFileSettings()" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <form [formGroup]="fileSettingsForm" (ngSubmit)="saveFileSettings()" class="modal-form">
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea formControlName="description" class="form-input form-textarea" rows="3" placeholder="Ajouter une description du fichier"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date d'expiration</label>
+          <input type="datetime-local" formControlName="expirationDate" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Téléchargements max</label>
+          <input type="number" formControlName="maxDownloads" class="form-input" min="1" max="1000" placeholder="Ex: 5">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Statut du fichier</label>
+          <select formControlName="status" class="form-select">
+            <option value="active">Actif — Téléchargement autorisé</option>
+            <option value="blocked">Suspendu — Téléchargement bloqué</option>
+            <option value="expired">Expiré — Date dépassée</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">IPs autorisées</label>
+          <input type="text" formControlName="allowedIPsText" class="form-input" placeholder="192.168.1.10, 10.0.0.1">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" (click)="closeFileSettings()">Annuler</button>
+        <button type="submit" class="btn btn-primary" [disabled]="busy">
+          <span *ngIf="!busy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Enregistrer
+          </span>
+          <span *ngIf="busy">Sauvegarde...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Share Modal -->
+<div class="modal-backdrop" *ngIf="showShareModal" (click)="closeShareModal()">
+  <div class="modal modal-lg" (click)="$event.stopPropagation()" [class.modal-busy]="busy">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-header-icon share-modal-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+        </div>
+        <div>
+          <h3>Partager le fichier</h3>
+          <p class="modal-subtitle">{{ selectedFileForShare?.originalName }}</p>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeShareModal()" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <form [formGroup]="shareForm" (ngSubmit)="createShareLink()" class="modal-form">
+      <div class="form-row row-primary">
+        <div class="form-group">
+          <label class="form-label">Mode de partage</label>
+          <select formControlName="shareMode" required class="form-select">
+            <option value="link">Lien public</option>
+            <option value="direct">Utilisateur(s) spécifiques</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expiration (heures)</label>
+          <div class="input-with-unit">
+            <input type="number" formControlName="expiresInHours" min="1" max="168" placeholder="48" required class="form-input">
+            <span class="unit">h</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Max téléchargements</label>
+          <div class="input-with-unit">
+            <input type="number" formControlName="maxUses" min="1" max="100" placeholder="10" required class="form-input">
+            <span class="unit">×</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row row-secondary" *ngIf="shareForm.get('shareMode')?.value === 'direct'">
+        <div class="form-group full-width">
+          <div class="field-head field-head-row">
+            <div>
+              <label class="form-label">Destinataires</label>
+              <span class="field-hint">Cliquez sur un utilisateur pour le sélectionner ou le retirer</span>
+            </div>
+            <div class="selection-badge" *ngIf="filteredTenantUsers.length">
+              {{ shareForm.get('recipientUserIds')?.value?.length || 0 }} sélectionné(s) / {{ filteredTenantUsers.length }}
+            </div>
+          </div>
+
+          <div class="recipient-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              type="text"
+              [value]="recipientSearch"
+              (input)="recipientSearch = $any($event.target).value"
+              placeholder="Rechercher un utilisateur..."
+              class="form-input"
+            >
+          </div>
+
+          <div class="recipient-chips">
+            <button
+              type="button"
+              class="recipient-chip"
+              *ngFor="let user of filteredTenantUsers"
+              [class.selected]="isRecipientSelected(user._id)"
+              (click)="toggleRecipient(user._id)"
+            >
+              <span class="chip-avatar">{{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}</span>
+              <span class="chip-text">
+                <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                <small>{{ user.email }}</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="selected-recipients" *ngIf="shareForm.get('recipientUserIds')?.value?.length">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            {{ shareForm.get('recipientUserIds')?.value?.length }} destinataire(s) sélectionné(s)
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row row-secondary share-details-row" *ngIf="shareForm.get('shareMode')?.value === 'direct'">
+        <div class="form-group share-subject-col">
+          <label class="form-label">Objet du partage (optionnel)</label>
+          <input type="text" formControlName="shareSubject" placeholder="Ex: Révision projet Q2" class="form-input">
+        </div>
+        <div class="form-group share-description-col">
+          <label class="form-label">Description (optionnel)</label>
+          <textarea formControlName="shareDescription" rows="2" placeholder="Ajouter des détails..." class="form-input form-textarea"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" (click)="closeShareModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary" [class.btn-loading]="busy" [disabled]="busy">
+          <span *ngIf="!busy">{{ shareForm.get("shareMode")?.value === "direct" ? "Partager" : "Créer le lien" }}</span>
+          <span *ngIf="busy">Création...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Public Share Result Modal -->
+<div class="modal-backdrop" *ngIf="publicShareResult" (click)="closePublicSharePopup()">
+  <div class="modal modal-success" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-header-icon success-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        </div>
+        <div>
+          <h3>Lien public créé</h3>
+          <p class="modal-subtitle">Partage prêt. Copiez rapidement le lien.</p>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closePublicSharePopup()" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="modal-form">
+      <div class="public-link-box">
+        <label class="form-label">Lien de téléchargement</label>
+        <div class="link-input-row">
+          <input
+            type="text"
+            [value]="publicShareResult?.shareUrl || ''"
+            readonly
+            (focus)="$any($event.target).select()"
+            class="form-input"
+          >
+          <button type="button" class="btn btn-primary" (click)="copyPublicShareLink()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            {{ publicShareResult?.copied ? "Copié !" : "Copier" }}
+          </button>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" (click)="closePublicSharePopup()">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scan Result Modal -->
+<div class="modal-backdrop" *ngIf="scanResult" (click)="closeScanModal()">
+  <div class="modal scan-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-header-icon" [class.danger-icon]="scanResult.isInfected" [class.success-icon]="!scanResult.isInfected">
+          <svg *ngIf="!scanResult.isInfected" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <svg *ngIf="scanResult.isInfected" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <div>
+          <h3>{{ scanResult.isInfected ? "Menace détectée" : "Analyse terminée" }}</h3>
+          <p class="modal-subtitle">{{ scanResult.originalName }}</p>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeScanModal()" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="modal-form scan-result-panel">
+      <div class="scan-summary">
+        <div class="scan-line">
+          <span>Statut</span>
+          <strong [class.text-success]="!scanResult.isInfected" [class.text-danger]="scanResult.isInfected">
+            {{ scanResult.isInfected ? "Infecté" : "Propre" }}
+          </strong>
+        </div>
+        <div class="scan-line" *ngIf="scanResult.fileHash">
+          <span>Hash SHA-256</span>
+          <strong class="hash-value">{{ scanResult.fileHash }}</strong>
+        </div>
+        <div class="scan-line" *ngIf="scanResult.warning">
+          <span>Alerte</span>
+          <strong>{{ scanResult.warning }}</strong>
+        </div>
+      </div>
+
+      <div class="scan-details">
+        <div class="detail-block">
+          <h4>ClamAV</h4>
+          <p>{{ scanResult.clamavResult?.isInfected ? "Menace détectée" : "Aucun virus détecté" }}</p>
+          <p *ngIf="scanResult.clamavResult?.viruses?.length">Moteurs détecteurs: {{ scanResult.clamavResult?.viruses?.join(', ') }}</p>
+          <p *ngIf="scanResult.clamavResult?.warning">{{ scanResult.clamavResult?.warning }}</p>
+        </div>
+
+        <div class="detail-block" *ngIf="scanResult.virustotalResult">
+          <h4>VirusTotal</h4>
+          <p>{{ scanResult.virustotalResult.isInfected ? "Menace détectée" : "Aucun virus détecté" }}</p>
+          <p *ngIf="scanResult.virustotalResult.detectionRatio">Ratio: {{ scanResult.virustotalResult.detectionRatio }}</p>
+          <p *ngIf="scanResult.virustotalResult.warning">{{ scanResult.virustotalResult.warning }}</p>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" (click)="closeScanModal()">Fermer</button>
+        <button *ngIf="!scanResult.isInfected" type="button" class="btn btn-primary" (click)="downloadFromScanModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Télécharger
+        </button>
+        <button *ngIf="scanResult.virustotalUrl" type="button" class="btn btn-ghost" (click)="openExternalUrl(scanResult.virustotalUrl)">
+          Voir sur VirusTotal
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

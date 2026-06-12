@@ -1,0 +1,556 @@
+// =====================================================
+// STYLES GLOBAUX - Thème Clair et Moderne
+// =====================================================
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import 'primeicons/primeicons.css';
+@import 'primeng/resources/themes/saga-blue/theme.css';
+@import 'primeng/resources/primeng.min.css';
+
+// 1. IMPORTS
+@import './styles/variables.scss';
+@import './styles/layout-user.scss';
+@import './styles/layout-admin.scss';
+@import './styles/components.scss';
+
+// =====================================================
+// RESET GLOBAL
+// =====================================================
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: $font-family;
+  font-size: $font-size-base;
+  line-height: 1.6;
+  color: $text-primary;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 109, 255, 0.08), transparent 32%),
+    radial-gradient(circle at 100% 100%, rgba(15, 118, 110, 0.08), transparent 28%),
+    $bg-secondary;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(15, 109, 255, 0.2);
+  color: $text-primary;
+}
+
+// =====================================================
+// TYPO GLOBALE
+// =====================================================
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+  color: $text-primary;
+  margin-bottom: $space-md;
+}
+
+h1 {
+  font-size: $font-size-3xl;
+}
+
+h2 {
+  font-size: $font-size-2xl;
+}
+
+h3 {
+  font-size: $font-size-xl;
+}
+
+h4 {
+  font-size: $font-size-lg;
+}
+
+h5 {
+  font-size: $font-size-base;
+}
+
+h6 {
+  font-size: $font-size-sm;
+}
+
+p {
+  margin-bottom: $space-md;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+a {
+  color: $primary;
+  text-decoration: none;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: $primary-dark;
+    text-decoration: underline;
+  }
+
+  &:active {
+    color: $primary-dark;
+  }
+}
+
+// =====================================================
+// SCROLL
+// =====================================================
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $bg-tertiary;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $border-color;
+  border-radius: $radius-full;
+
+  &:hover {
+    background: $border-color-dark;
+  }
+}
+
+// Firefox
+* {
+  scrollbar-color: $border-color $bg-tertiary;
+  scrollbar-width: thin;
+}
+
+// =====================================================
+// FOCUS & ACCESSIBILITY
+// =====================================================
+
+:focus-visible {
+  outline: 2px solid $primary;
+  outline-offset: 2px;
+}
+
+// =====================================================
+// NGX-TOASTR CUSTOMIZATION
+// =====================================================
+
+.ngx-toastr {
+  .toast {
+    border-radius: $radius-lg;
+    box-shadow: $shadow-lg;
+    font-family: $font-family;
+
+    &.toast-success {
+      background-color: $success;
+    }
+
+    &.toast-error {
+      background-color: $danger;
+    }
+
+    &.toast-info {
+      background-color: $info;
+    }
+
+    &.toast-warning {
+      background-color: $warning;
+    }
+  }
+
+  .progress {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// =====================================================
+// NGXPAGINATION CUSTOMIZATION
+// =====================================================
+
+.ngx-pagination {
+  margin: $space-lg 0;
+  text-align: center;
+
+  .pagination li a, .pagination li span {
+    padding: 0.5rem 0.75rem;
+    min-height: 36px;
+    line-height: 36px;
+    color: $text-primary;
+    border-radius: $radius-md;
+    border: 1px solid $border-color;
+    background-color: $bg-primary;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background-color: $primary;
+      color: white;
+      border-color: $primary;
+    }
+  }
+
+  .pagination .current {
+    background-color: $primary;
+    color: white;
+    border-color: $primary;
+  }
+
+  .pagination li.disabled a {
+    color: $text-muted;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: $bg-primary;
+      border-color: $border-color;
+      color: $text-muted;
+    }
+  }
+}
+
+// =====================================================
+// CHART.JS CUSTOMIZATION
+// =====================================================
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  margin-bottom: $space-lg;
+
+  &.chart-large {
+    height: 400px;
+  }
+
+  canvas {
+    max-height: 100% !important;
+  }
+}
+
+// =====================================================
+// UTILITAIRES
+// =====================================================
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-muted {
+  color: $text-secondary;
+}
+
+.text-primary {
+  color: $primary;
+}
+
+.text-success {
+  color: $success;
+}
+
+.text-danger {
+  color: $danger;
+}
+
+.text-warning {
+  color: $warning;
+}
+
+.text-info {
+  color: $info;
+}
+
+.font-bold {
+  font-weight: $font-weight-bold;
+}
+
+.font-semibold {
+  font-weight: $font-weight-semibold;
+}
+
+.font-medium {
+  font-weight: $font-weight-medium;
+}
+
+.font-light {
+  font-weight: $font-weight-light;
+}
+
+.mb-0 {
+  margin-bottom: 0;
+}
+
+.mb-xs {
+  margin-bottom: $space-xs;
+}
+
+.mb-sm {
+  margin-bottom: $space-sm;
+}
+
+.mb-md {
+  margin-bottom: $space-md;
+}
+
+.mb-lg {
+  margin-bottom: $space-lg;
+}
+
+.mb-xl {
+  margin-bottom: $space-xl;
+}
+
+.mt-xs {
+  margin-top: $space-xs;
+}
+
+.mt-sm {
+  margin-top: $space-sm;
+}
+
+.mt-md {
+  margin-top: $space-md;
+}
+
+.mt-lg {
+  margin-top: $space-lg;
+}
+
+.mt-xl {
+  margin-top: $space-xl;
+}
+
+.p-xs {
+  padding: $space-xs;
+}
+
+.p-sm {
+  padding: $space-sm;
+}
+
+.p-md {
+  padding: $space-md;
+}
+
+.p-lg {
+  padding: $space-lg;
+}
+
+.p-xl {
+  padding: $space-xl;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block !important;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  @include flex-col;
+}
+
+.flex-center {
+  @include flex-center;
+}
+
+.flex-between {
+  @include flex-between;
+}
+
+.gap-xs {
+  gap: $space-xs;
+}
+
+.gap-sm {
+  gap: $space-sm;
+}
+
+.gap-md {
+  gap: $space-md;
+}
+
+.gap-lg {
+  gap: $space-lg;
+}
+
+.gap-xl {
+  gap: $space-xl;
+}
+
+.no-wrap {
+  white-space: nowrap;
+}
+
+.truncate {
+  @include truncate;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.select-none {
+  user-select: none;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-half {
+  width: 50%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+// =====================================================
+// PRINT STYLES
+// =====================================================
+
+@media print {
+  body {
+    background-color: $bg-primary;
+    color: $text-primary;
+  }
+
+  .admin-sidebar,
+  .user-header,
+  .no-print {
+    display: none !important;
+  }
+}
+
+.card {
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.25rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+  color: #02111f;
+  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.28);
+}
+
+.btn-secondary {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.btn-danger {
+  background: rgba(251, 113, 133, 0.12);
+  color: #fecdd3;
+  border: 1px solid rgba(251, 113, 133, 0.22);
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field label,
+.field span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.7);
+  color: var(--text);
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.helper {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.status {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.status.active {
+  background: rgba(52, 211, 153, 0.12);
+  color: #a7f3d0;
+}
+
+.status.blocked {
+  background: rgba(251, 113, 133, 0.12);
+  color: #fecdd3;
+}

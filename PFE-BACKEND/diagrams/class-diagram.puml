@@ -1,0 +1,370 @@
+@startuml PFE_Class_Diagram
+
+!define CLOUDURL https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v14.0/dist
+
+skinparam backgroundColor #ffffff
+skinparam classBorderColor #1976d2
+skinparam classBackgroundColor #e3f2fd
+skinparam classArrowColor #424242
+skinparam arrowColor #424242
+
+title PFE Backend - Diagramme de Classes
+
+' ===== ENTITÉS PRINCIPALES =====
+
+class User {
+    -id: ObjectId
+    -tenantId: ObjectId (ref Tenant)
+    -firstName: String
+    -lastName: String
+    -email: String (unique)
+    -phoneNumber: String
+    -password: String (hashed)
+    -role: Enum[SUPERADMIN, TENANT_ADMIN, USER]
+    -verified: Boolean
+    -mfaEnabled: Boolean
+    -verificationCode: Number
+    -mfaSecret: String
+    -is2FAEnabled: Boolean
+    -otpCode: String
+    -otpExpires: Date
+    -otpAttempts: Number
+    -otpBlocked: Boolean
+    -otpBlockedUntil: Date
+    -status: String[active, inactive, suspended]
+    -token: String
+    -failedAttempts: Number
+    -lastLogin: Date
+    --
+    +verifyPassword(): Boolean
+    +generateOTP(): String
+    +validateOTP(code): Boolean
+    +blockOTPTemporarily(): void
+    +updateLastLogin(): void
+}
+
+class Tenant {
+    -id: ObjectId
+    -name: String
+    -domain: String (unique)
+    -subscriptionPlan: String
+    -quotaOverrides: Object
+    -status: Enum[active, suspended, inactive]
+    -createdAt: Date
+    -updatedAt: Date
+    --
+    +getQuotaLimits(): Object
+    +updateQuota(overrides): void
+    +calculateUsage(): Object
+}
+
+class File {
+    -id: ObjectId
+    -tenantId: ObjectId (ref Tenant)
+    -ownerId: ObjectId (ref User)
+    -ownerSpaceId: ObjectId (ref Folder)
+    -sharedWith: ObjectId[] (ref User)
+    -bucketName: String
+    -storageProvider: String[minio]
+    -filename: String
+    -originalName: String
+    -description: String
+    -mimeType: String
+    -storagePath: String
+    -contentHash: String
+    -iv: String
+    -authTag: String
+    -integrity: String
+    -size: Number
+    -encryptionKeyId: ObjectId (ref EncryptionKey)
+    -scanStatus: Enum[pending, clean, infected, failed]
+    -scanViruses: String[]
+    -scannedAt: Date
+    -scanMetadata: Object
+    -encryptionMetadata: Object
+    -downloadCount: Number
+    -maxDownloads: Number
+    -allowedIPs: String[]
+    -status: Enum[active, expired, blocked, quarantined]
+    -expirationDate: Date
+    --
+    +encrypt(key): void
+    +decrypt(key): Buffer
+    +updateAccessCount(): void
+    +isExpired(): Boolean
+    +quarantine(reason): void
+}
+
+class Folder {
+    -id: ObjectId
+    -tenantId: ObjectId (ref Tenant)
+    -ownerId: ObjectId (ref User)
+    -name: String
+    -parentId: ObjectId (ref Folder)
+    -path: String
+    -color: String
+    -icon: String
+    -position: Number
+    -isRoot: Boolean
+    --
+    +getFullPath(): String
+    +getChildren(): Folder[]
+    +move(newParent): void
+    +rename(newName): void
+}
+
+class ShareHistory {
+    -id: ObjectId
+    -shareId: String (unique)
+    -sharedBy: Object{userId, email, tenantId, ipAddress, userAgent}
+    -sharedWith: Object{userId, email, recipientEmails, externalUser}
+    -fileId: ObjectId (ref File)
+    -fileName: String
+    -fileSize: Number
+    -mimeType: String
+    -fileHash: String
+    -shareUrl: String
+    -shareType: Enum[direct, link, public]
+    -accessLevel: Enum[view, download, edit]
+    -expiresAt: Date
+    -hasPassword: Boolean
+    -maxDownloads: Number
+    -note: String
+    -subject: String
+    -downloadCount: Number
+    -viewCount: Number
+    -lastAccessedAt: Date
+    -firstAccessedAt: Date
+    -accessLogs: Object[]
+    -status: Enum[active, revoked, expired]
+    -revokedAt: Date
+    -revokeReason: String
+    -revokedBy: ObjectId (ref User)
+    -auditTrail: Object[]
+    --
+    +isExpired(): Boolean
+    +isDownloadQuotaExceeded(): Boolean
+    +addAccessLog(data): void
+    +checkExpiration(): void
+    +revoke(reason): void
+}
+
+class SharedLink {
+    -id: ObjectId
+    -tenantId: ObjectId (ref Tenant)
+    -fileId: ObjectId (ref File)
+    -shareHistoryId: ObjectId (ref ShareHistory)
+    -createdBy: ObjectId (ref User)
+    -recipientUserId: ObjectId (ref User)
+    -recipientUserIds: ObjectId[] (ref User)
+    -hiddenForUserIds: ObjectId[] (ref User)
+    -recipientEmail: String
+    -tokenHash: String (unique)
+    -maxUses: Number
+    -usedCount: Number
+    -expiresAt: Date
+    -revokedAt: Date
+    -lastAccessedAt: Date
+    -permissions: String[]
+    -accessControl: Enum[public, recipient-only, ip-restricted]
+    -requireRecipientAuth: Boolean
+    -allowedIPs: String[]
+    -passwordHash: String
+    -accessLog: Object[]
+    -purpose: String[temporary-access, archive-backup, external-review]
+    -securityLevel: Enum[public, internal, confidential, restricted]
+    --
+    +isValid(): Boolean
+    +isExpired(): Boolean
+    +canDownload(): Boolean
+    +incrementUsedCount(): void
+    +validatePassword(pwd): Boolean
+    +validateIP(ip): Boolean
+}
+
+class Notification {
+    -id: ObjectId
+    -recipientUserId: ObjectId (ref User)
+    -tenantId: ObjectId (ref Tenant)
+    -type: String
+    -title: String
+    -message: String
+    -tone: Enum[info, success, warning, danger]
+    -iconKey: String
+    -action: Object{label, kind, entityId, queryParams}
+    -metadata: Object
+    -readAt: Date
+    --
+    +markAsRead(): void
+    +delete(): void
+}
+
+class Plan {
+    -id: ObjectId
+    -slug: String (unique, lowercase)
+    -name: String
+    -description: String
+    -storageBytes: Number
+    -maxUsers: Number
+    -maxFiles: Number
+    -maxFolders: Number
+    -userStorageBytes: Number
+    -userMaxFiles: Number
+    -userDailyUploadBytes: Number
+    -isDefault: Boolean
+    -sortOrder: Number
+    -isActive: Boolean
+    --
+    +getStorageGB(): Number
+    +getUserStorageGB(): Number
+}
+
+class Complaint {
+    -id: ObjectId
+    -ticketId: String (unique)
+    -requester: Object{userId, tenantId, email, fullName}
+    -category: Enum[technical, billing, access, security, other]
+    -priority: Enum[low, medium, high, urgent]
+    -subject: String
+    -description: String
+    -status: Enum[open, in_progress, pending_user, resolved, closed, rejected]
+    -assignedTo: ObjectId (ref User)
+    -tags: String[]
+    -attachments: Object[]
+    -messages: ComplaintMessage[]
+    -counters: Object{adminMessages, userMessages}
+    -sla: Object{firstResponseDueAt, resolutionDueAt, ...}
+    -cancelReason: String
+    -resolveReason: String
+    -rejectReason: String
+    -closedAt: Date
+    -lastActivityAt: Date
+    -auditTrail: ComplaintAudit[]
+    --
+    +addMessage(msg): void
+    +assign(userId): void
+    +resolve(reason): void
+    +cancel(reason): void
+    +escalate(): void
+}
+
+class Activity {
+    -id: ObjectId
+    -userId: ObjectId (ref User)
+    -tenantId: ObjectId (ref Tenant)
+    -type: String
+    -action: String
+    -resourceId: Mixed
+    -resourceType: String
+    -metadata: Object
+    -ip: String
+    -userAgent: String
+    -createdAt: Date
+    --
+    +getResourceDetails(): Object
+}
+
+class EncryptionKey {
+    -id: ObjectId
+    -encryptedKey: String
+    -iv: String
+    -algorithm: Enum[AES-256-GCM]
+    -rotationDate: Date
+    -createdAt: Date
+    -updatedAt: Date
+    --
+    +rotate(): void
+    +decrypt(masterKey): String
+}
+
+class ComplaintMessage {
+    -authorType: Enum[user, admin]
+    -authorId: ObjectId (ref User)
+    -message: String
+    -isInternalNote: Boolean
+    -attachments: Object[]
+    -createdAt: Date
+}
+
+class ComplaintAudit {
+    -action: String
+    -performedBy: ObjectId (ref User)
+    -role: String
+    -details: Object
+    -at: Date
+}
+
+' ===== RELATIONS =====
+
+' Tenant relations
+Tenant "1" *-- "0..*" User : contains
+Tenant "1" *-- "0..*" File : owns
+Tenant "1" *-- "0..*" Folder : owns
+Tenant "1" *-- "0..*" ShareHistory : tracks
+Tenant "1" *-- "0..*" SharedLink : manages
+Tenant "1" *-- "0..*" Notification : sends
+Tenant "1" *-- "0..*" Complaint : receives
+Tenant "1" *-- "0..*" Activity : logs
+Tenant "1" -- "1" Plan : subscribes to
+
+' User relations
+User "1" *-- "0..*" File : owns
+User "1" *-- "0..*" Folder : creates
+User "1" *-- "0..*" ShareHistory : initiates
+User "0..*" -- "0..*" File : shared with
+User "1" -- "0..*" SharedLink : creates
+User "0..*" -- "0..*" SharedLink : receives
+User "1" -- "0..*" Notification : receives
+User "1" -- "0..*" Complaint : submits
+User "0..1" -- "0..*" Complaint : assigned to
+User "1" -- "0..*" Activity : performs
+
+' File relations
+File "1" *-- "0..*" ShareHistory : involved in
+File "1" *-- "0..*" SharedLink : linked to
+File "1" -- "1" EncryptionKey : encrypted by
+File "0..1" -- "1" Folder : located in
+
+' Folder relations
+Folder "1" -- "0..1" Folder : parent
+
+' ShareHistory relations
+ShareHistory "0..1" -- "0..1" SharedLink : references
+
+' Complaint relations
+Complaint "1" *-- "1..*" ComplaintMessage : contains
+Complaint "1" *-- "0..*" ComplaintAudit : tracks
+
+' Notation
+note right of User
+    Gestion des identités
+    et authentification
+    Supporte OAuth2/OIDC
+    avec Keystone
+end note
+
+note right of File
+    Stockage chiffré
+    Contrôle d'accès
+    Versioning & Snapshots
+end note
+
+note right of ShareHistory
+    Audit trail complet
+    Tracking accès
+    Gestion durée partage
+end note
+
+note right of Complaint
+    Support client
+    Tracking issues
+    SLA management
+end note
+
+note right of Activity
+    Logging entièrement
+    Audit & Compliance
+    Traçabilité totale
+end note
+
+@enduml

@@ -1,0 +1,136 @@
+<section class="auth-register-section">
+  <div class="register-header">
+    <h2>Créer votre compte</h2>
+    <p class="register-subtitle">Inscription en quelques minutes</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="register-form">
+    <!-- Row 1: Name Fields -->
+    <div class="form-row-compact">
+      <div class="form-group-compact">
+        <label class="form-label-compact">Prénom</label>
+        <input type="text" formControlName="firstName" class="form-input-compact" placeholder="Jean">
+        <div class="form-error-compact" *ngIf="form.get('firstName')?.invalid && form.get('firstName')?.touched">
+          Requis
+        </div>
+      </div>
+
+      <div class="form-group-compact">
+        <label class="form-label-compact">Nom</label>
+        <input type="text" formControlName="lastName" class="form-input-compact" placeholder="Dupont">
+        <div class="form-error-compact" *ngIf="form.get('lastName')?.invalid && form.get('lastName')?.touched">
+          Requis
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Contact Fields -->
+    <div class="form-row-compact">
+      <div class="form-group-compact">
+        <label class="form-label-compact">Email</label>
+        <input type="email" formControlName="email" class="form-input-compact" placeholder="jean@exemple.com">
+        <div class="form-error-compact" *ngIf="form.get('email')?.invalid && form.get('email')?.touched">
+          Email valide requis
+        </div>
+      </div>
+
+      <div class="form-group-compact">
+        <label class="form-label-compact">Téléphone</label>
+        <input type="tel" formControlName="phoneNumber" class="form-input-compact" placeholder="+33 6 12 34 56 78">
+      </div>
+    </div>
+
+    <!-- Row 3: Tenant Domain (Full Width) -->
+    <div class="form-group-full">
+      <label class="form-label-compact">Domaine du tenant</label>
+      <input type="text" formControlName="tenantDomain" class="form-input-compact" placeholder="monentreprise">
+      <div *ngIf="tenantCheckLoading" class="tenant-status-compact loading">⏳ Vérification...</div>
+      <div *ngIf="!tenantCheckLoading && tenantExists !== null" class="tenant-status-compact" [class.exists]="tenantExists">
+        <span *ngIf="tenantExists">✕ Tenant existant Merci de Contacter Votre Administrateur Afi d'ajouter votre compte </span>
+        <span *ngIf="!tenantExists">✓ Nouveau tenant</span>
+      </div>
+      <div class="form-error-compact" *ngIf="form.get('tenantDomain')?.hasError('required') && form.get('tenantDomain')?.touched">
+        Domaine requis
+      </div>
+    </div>
+
+    <!-- Row 4: Storage Plan (Full Width) -->
+    <div class="form-group-full">
+      <label class="form-label-compact">Plan de stockage</label>
+      <select formControlName="storagePlan" class="form-input-compact" (change)="onPlanSelectChange($event)">
+        <option value="" disabled>Sélectionner un plan</option>
+        <option *ngFor="let plan of plans" [value]="plan.slug">{{ plan.name }} - {{ formatStorageGB(plan.storageBytes) }} GB</option>
+      </select>
+      <div class="form-error-compact" *ngIf="form.get('storagePlan')?.invalid && form.get('storagePlan')?.touched">
+        Plan requis
+      </div>
+    </div>
+
+    <!-- Plan Preview Card (Compact) -->
+    <div *ngIf="selectedPlan" class="plan-preview-compact">
+      <div class="preview-item">
+        <span>Stockage</span>
+        <strong>{{ formatStorageGB(selectedPlan.storageBytes) }} GB</strong>
+      </div>
+      <div class="preview-item">
+        <span>Utilisateurs</span>
+        <strong>{{ selectedPlan.maxUsers ?? 'Illimité' }}</strong>
+      </div>
+      <div class="preview-item">
+        <span>Fichiers</span>
+        <strong>{{ selectedPlan.maxFiles ?? 'Illimité' }}</strong>
+      </div>
+    </div>
+
+    <!-- Row 5: Password Fields -->
+    <div class="form-row-compact">
+      <div class="form-group-compact">
+        <label class="form-label-compact">Mot de passe</label>
+        <input type="password" formControlName="password" class="form-input-compact" placeholder="Min. 6 caractères">
+        <div class="form-error-compact" *ngIf="form.get('password')?.invalid && form.get('password')?.touched">
+          Minimum 6 caractères
+        </div>
+      </div>
+
+      <div class="form-group-compact">
+        <label class="form-label-compact">Confirmer</label>
+        <input type="password" formControlName="passwordConfirm" class="form-input-compact" placeholder="Confirmer">
+        <div class="form-error-compact" *ngIf="form.get('passwordConfirm')?.invalid && form.get('passwordConfirm')?.touched">
+          Requis
+        </div>
+        <div class="form-error-compact" *ngIf="form.hasError('passwordMismatch') && form.get('passwordConfirm')?.touched">
+          Les mots de passe ne correspondent pas
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="form-messages-compact">
+      <p class="success" *ngIf="success">{{ success }}</p>
+      <p class="error" *ngIf="error">{{ error }}</p>
+    </div>
+
+    <!-- Submit Button -->
+    <button class="btn-register" type="submit" [disabled]="loading">
+      <span *ngIf="!loading">Créer mon compte</span>
+      <span *ngIf="loading" class="loading-spinner">Création en cours...</span>
+    </button>
+
+    <!-- Footer Link -->
+    <div class="register-footer">
+      <p>Déjà un compte ? <a routerLink="/login" class="auth-link-compact">Se connecter</a></p>
+    </div>
+
+    <!-- Unified Verification Popup -->
+    <app-unified-verification
+      [isOpen]="showVerificationPopup"
+      mode="signup"
+      [email]="createdEmail"
+      [userId]="createdUserId"
+      [tenantDomain]="tenantDomain"
+      [isNewTenant]="isNewTenant"
+      (close)="closeVerificationPopup()"
+      (verified)="onVerificationComplete($event)"
+    ></app-unified-verification>
+  </form>
+</section>

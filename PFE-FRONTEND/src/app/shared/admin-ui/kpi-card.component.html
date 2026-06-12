@@ -1,0 +1,26 @@
+<article class="kpi-card" [class.tone-success]="tone==='success'" [class.tone-warning]="tone==='warning'" [class.tone-danger]="tone==='danger'">
+  <div class="kpi-top">
+    <div class="kpi-icon" [attr.aria-hidden]="true">
+      <ng-container [ngSwitch]="icon">
+        <svg *ngSwitchCase="'users'" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <svg *ngSwitchCase="'tenants'" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21v-6a4 4 0 014-4h10a4 4 0 014 4v6"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <svg *ngSwitchCase="'files'" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        <svg *ngSwitchDefault viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+      </ng-container>
+    </div>
+
+    <div class="kpi-meta">
+      <span class="kpi-label">{{ label }}</span>
+      <strong class="kpi-value">{{ value }}</strong>
+    </div>
+  </div>
+
+  <div class="kpi-footer">
+    <small class="kpi-sub">{{ subtitle }}</small>
+    <div class="kpi-spark" *ngIf="sparkData">
+      <svg viewBox="0 0 100 20" preserveAspectRatio="none">
+        <polyline [attr.points]="sparkData" fill="none" stroke-width="2" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+</article>

@@ -1,0 +1,102 @@
+<div class="search-container">
+  <div class="search-input-group">
+    <div class="search-input-wrapper">
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="onSearchInput()"
+        placeholder="Rechercher des fichiers et dossiers..."
+        class="search-input"
+        autocomplete="off"
+      >
+      <div class="search-icon">🔍</div>
+      <button
+        *ngIf="searchQuery"
+        (click)="clearSearch()"
+        class="clear-button"
+        title="Effacer"
+      >
+        ✕
+      </button>
+    </div>
+
+    <div class="search-filters">
+      <button
+        [class.active]="searchType === 'all'"
+        (click)="onSearchTypeChange('all')"
+        class="filter-button"
+      >
+        Tout
+      </button>
+      <button
+        [class.active]="searchType === 'files'"
+        (click)="onSearchTypeChange('files')"
+        class="filter-button"
+      >
+        Fichiers
+      </button>
+      <button
+        [class.active]="searchType === 'folders'"
+        (click)="onSearchTypeChange('folders')"
+        class="filter-button"
+      >
+        Dossiers
+      </button>
+    </div>
+  </div>
+
+  <!-- Search Results -->
+  <div class="search-results" *ngIf="hasSearched">
+    <div *ngIf="isSearching" class="search-loading">
+      <div class="spinner"></div>
+      Recherche en cours...
+    </div>
+
+    <div *ngIf="!isSearching && searchResults.length === 0" class="no-results">
+      <div class="no-results-icon">🔍</div>
+      <p>Aucun résultat trouvé pour "<strong>{{ searchQuery }}</strong>"</p>
+      <small>Essayez avec des termes différents</small>
+    </div>
+
+    <div *ngIf="!isSearching && searchResults.length > 0" class="results-list">
+      <div class="results-header">
+        <span>{{ searchResults.length }} résultat{{ searchResults.length > 1 ? 's' : '' }} trouvé{{ searchResults.length > 1 ? 's' : '' }}</span>
+      </div>
+
+      <div
+        *ngFor="let result of searchResults"
+        (click)="selectResult(result)"
+        class="result-item"
+        [class.file-result]="result.type === 'file'"
+        [class.folder-result]="result.type === 'folder'"
+      >
+        <div class="result-icon">
+          <span *ngIf="result.type === 'folder'">📁</span>
+          <span *ngIf="result.type === 'file'">{{ getFileIcon(result.mimeType) }}</span>
+        </div>
+
+        <div class="result-info">
+          <div class="result-name">{{ result.name }}</div>
+          <div class="result-meta">
+            <span class="result-type">{{ result.type === 'file' ? 'Fichier' : 'Dossier' }}</span>
+            <span *ngIf="result.type === 'file' && result.size" class="result-size">
+              • {{ formatFileSize(result.size) }}
+            </span>
+            <span *ngIf="result.mimeType" class="result-mime">
+              • {{ result.mimeType }}
+            </span>
+            <span class="result-date">
+              • {{ formatDate(result.createdAt) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <button class="select-button" title="Sélectionner">
+            →
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

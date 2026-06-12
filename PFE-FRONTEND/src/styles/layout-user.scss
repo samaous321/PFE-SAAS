@@ -1,0 +1,203 @@
+@import '../styles/variables.scss';
+
+// =====================================================
+// LAYOUT UTILISATEUR - Simple et épuré
+// =====================================================
+
+.user-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: $bg-secondary;
+  font-family: $font-family;
+  color: $text-primary;
+}
+
+// HEADER UTILISATEUR
+.user-header {
+  background-color: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid $border-color;
+  box-shadow: $shadow-sm;
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  .header-content {
+    @include flex-between;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: $space-md $space-lg;
+    gap: $space-lg;
+
+    .header-left {
+      @include flex-center;
+      gap: $space-lg;
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: $space-sm;
+        font-size: $font-size-lg;
+        font-weight: $font-weight-bold;
+        color: $primary;
+        cursor: pointer;
+        transition: opacity $transition-fast;
+
+        &:hover {
+          opacity: 0.8;
+        }
+
+        svg, img {
+          width: 32px;
+          height: 32px;
+        }
+      }
+
+      .nav-links {
+        display: flex;
+        gap: $space-lg;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+
+        @include responsive('md') {
+          gap: $space-md;
+        }
+
+        a {
+          @include link-reset;
+          font-size: $font-size-sm;
+          font-weight: $font-weight-medium;
+          color: $text-secondary;
+          padding: $space-sm $space-md;
+          border-radius: $radius-full;
+          transition: all $transition-fast;
+
+          &:hover {
+            color: $primary;
+            background-color: $bg-secondary;
+          }
+
+          &.active {
+            color: $primary;
+            background: linear-gradient(135deg, rgba(15, 109, 255, 0.16), rgba(15, 118, 110, 0.16));
+            box-shadow: inset 0 0 0 1px rgba(15, 109, 255, 0.25);
+          }
+        }
+      }
+    }
+
+    .header-right {
+      @include flex-center;
+      gap: $space-lg;
+
+      .user-menu {
+        @include flex-center;
+        gap: $space-md;
+
+        .avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: $radius-full;
+          background-color: $primary;
+          color: white;
+          @include flex-center;
+          font-weight: $font-weight-bold;
+          font-size: $font-size-sm;
+          cursor: pointer;
+        }
+
+        .dropdown {
+          position: relative;
+
+          button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: $font-size-lg;
+          }
+
+          .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: $bg-primary;
+            border: 1px solid $border-color;
+            border-radius: $radius-lg;
+            box-shadow: $shadow-lg;
+            min-width: 200px;
+            margin-top: $space-sm;
+            list-style: none;
+            padding: 0;
+            display: none;
+            z-index: $z-dropdown;
+
+            &.active {
+              display: block;
+            }
+
+            li {
+              a, button {
+                @include link-reset;
+                display: block;
+                width: 100%;
+                padding: $space-md $space-lg;
+                text-align: left;
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: $font-size-sm;
+                color: $text-primary;
+                transition: all $transition-fast;
+
+                &:hover {
+                  background-color: $bg-secondary;
+                  color: $primary;
+                }
+
+                &.danger {
+                  color: $danger;
+
+                  &:hover {
+                    background-color: $danger-light;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @include responsive('md') {
+    .header-content {
+      padding: $space-md;
+    }
+  }
+}
+
+// CONTENU PRINCIPAL
+.user-main {
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: $space-lg;
+
+  @include responsive('md') {
+    padding: $space-md;
+  }
+}
+
+// FOOTER
+.user-footer {
+  background-color: $bg-primary;
+  border-top: 1px solid $border-color;
+  padding: $space-lg;
+  text-align: center;
+  color: $text-secondary;
+  font-size: $font-size-sm;
+  margin-top: auto;
+}

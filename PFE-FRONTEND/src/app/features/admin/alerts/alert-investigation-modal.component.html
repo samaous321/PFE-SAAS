@@ -1,0 +1,102 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="modal-eyebrow">Investigation sécuritaire</p>
+        <h2>{{ alert?.originalName }}</h2>
+        <p class="modal-subtitle">{{ tenantName }} · {{ ownerName }}</p>
+      </div>
+      <button type="button" class="close-btn" (click)="close.emit()" aria-label="Fermer">✕</button>
+    </header>
+
+    <section class="score-panel">
+      <div class="score-row">
+        <div>
+          <span class="score-label">Niveau de risque</span>
+          <strong>{{ severityScore }}%</strong>
+        </div>
+        <span class="status-chip" [ngClass]="severityTone">{{ statusLabel }}</span>
+      </div>
+      <div class="score-track"><span class="score-fill" [ngClass]="severityTone" [style.width.%]="severityScore"></span></div>
+    </section>
+
+    <section class="detail-grid">
+      <article class="detail-card">
+        <h3>Informations fichier</h3>
+        <dl>
+          <div><dt>Taille</dt><dd>{{ formatBytes(alert?.size) }}</dd></div>
+          <div><dt>MIME</dt><dd>{{ alert?.mimeType || 'Inconnu' }}</dd></div>
+          <div><dt>Hash SHA256</dt><dd class="mono">{{ fileHash }}</dd></div>
+          <div><dt>Créé le</dt><dd>{{ formatDate(alert?.createdAt) }}</dd></div>
+        </dl>
+      </article>
+
+      <article class="detail-card">
+        <h3>État sécurité</h3>
+        <dl>
+          <div><dt>Statut</dt><dd>{{ alert?.status || 'inconnu' }}</dd></div>
+          <div><dt>Quarantaine</dt><dd>{{ alert?.scanMetadata?.quarantineStatus || 'unknown' }}</dd></div>
+          <div><dt>Téléchargements</dt><dd>{{ downloadCount }} / {{ maxDownloads }}</dd></div>
+          <div><dt>Destinataires</dt><dd>{{ (alert?.sharedWith?.length || 0) }} utilisateur(s)</dd></div>
+        </dl>
+      </article>
+
+      <article class="detail-card span-2">
+        <h3>Analyses antivirus</h3>
+        <div class="analysis-list">
+          <div class="analysis-item" [class.alert]="alert?.scanMetadata?.clamavResult?.isInfected">
+            <strong>ClamAV</strong>
+            <span>{{ alert?.scanMetadata?.clamavResult?.isInfected ? 'INFECTÉ' : 'Propre' }}</span>
+          </div>
+          <div class="analysis-item" [class.alert]="alert?.scanMetadata?.virustotalResult?.isInfected">
+            <strong>VirusTotal</strong>
+            <span>{{ alert?.scanMetadata?.virustotalResult?.isInfected ? 'INFECTÉ' : 'Propre' }}</span>
+          </div>
+          <div class="analysis-item">
+            <strong>Virus détectés</strong>
+            <span>{{ viruses || 'Aucun' }}</span>
+          </div>
+          <div class="analysis-item">
+            <strong>Dernière note</strong>
+            <span>{{ investigationNotes }}</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="detail-card">
+        <h3>Approbation</h3>
+        <dl>
+          <div><dt>Approuvé par</dt><dd>{{ alert?.scanMetadata?.whitelistedBy ? 'Oui' : 'Non' }}</dd></div>
+          <div><dt>Raison</dt><dd>{{ approvalInfo }}</dd></div>
+          <div><dt>Date</dt><dd>{{ formatDate(whitelistDate) }}</dd></div>
+        </dl>
+      </article>
+
+      <article class="detail-card">
+        <h3>Accès rapide</h3>
+        <div class="quick-actions">
+          <button type="button" class="quick-btn primary" (click)="download.emit()" [disabled]="busy">
+            <span class="btn-icon">⬇</span>
+            Télécharger
+          </button>
+          <button type="button" class="quick-btn success" (click)="approve.emit()" [disabled]="busy">
+            <span class="btn-icon">✓</span>
+            Approuver
+          </button>
+          <button type="button" class="quick-btn danger" (click)="block.emit()" [disabled]="busy">
+            <span class="btn-icon">⛔</span>
+            Bloquer
+          </button>
+          <button type="button" class="quick-btn ghost" (click)="deleteFile.emit()" [disabled]="busy">
+            <span class="btn-icon">🗑</span>
+            Supprimer
+          </button>
+          <button type="button" class="quick-btn ghost" (click)="openVirusTotal.emit()" [disabled]="busy || !alert?.contentHash">
+            <span class="btn-icon">🔗</span>
+            VirusTotal
+          </button>
+        </div>
+      </article>
+    </section>
+  </div>
+</div>

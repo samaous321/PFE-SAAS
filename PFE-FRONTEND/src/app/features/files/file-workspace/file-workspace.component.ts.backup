@@ -1,0 +1,249 @@
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthStorageService } from '../../../core/services/auth-storage.service';
+import { FileApiService } from '../../../core/services/file-api.service';
+import { SecureFile } from '../../../core/models/file.model';
+
+interface TenantUser {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
+interface SharedFile {
+  linkId: string;
+  fileId: string;
+  file: SecureFile;
+  sharedBy?: TenantUser;
+  recipient?: TenantUser;
+  accessControl: string;
+  expiresAt: string;
+  usedCount?: number;
+  maxUses?: number;
+}
+
+@Component({
+  standalone: true,
+  selector: 'app-file-workspace',
+  imports: [CommonModule, ReactiveFormsModule],
+  templateUrl: './file-workspace.component.html',
+  styleUrl: './file-workspace.component.scss'
+})
+export class FileWorkspaceComponent implements OnInit {
+  private readonly fileApi = inject(FileApiService);
+  private readonly authStorage = inject(AuthStorageService);
+  private readonly fb = inject(FormBuilder);
+
+  files: SecureFile[] = [];
+  sharedWithMe: SharedFile[] = [];
+  sharedByMe: SharedFile[] = [];
+  tenantUsers: TenantUser[] = [];
+
+  loading = true;
+  busy = false;
+  error = '';
+  success = '';
+  selectedFile: File | null = null;
+  activeTab: 'files' | 'shared-with-me' | 'shared-by-me' = 'files';
+
+  shareForm = this.fb.nonNullable.group({
+    fileId: ['', [Validators.required]],
+    shareMode: ['link' as 'link' | 'direct'],
+    expiresInHours: [24, [Validators.required]],
+    maxUses: [1, [Validators.required]],
+    recipientUserId: [''],
+    recipientEmail: ['']
+  });
+
+  ngOnInit(): void {
+    this.loadFiles();
+    this.loadSharedFiles();
+    this.loadTenantUsers();
+  }
+
+  get isAdmin(): boolean {
+    return this.authStorage.isAdmin();
+  }
+
+  private loadFiles(): void {
+    this.loading = true;
+    this.error = '';
+
+    const request = this.isAdmin
+      ? this.fileApi.getTenantFiles()
+     : this.fileApi.getMyFiles();
+
+    request.subscribe({
+      next: (files) => {
+        this.files = files;
+        this.loading = false;
+      },
+      error: (response) => {
+        this.error = response?.error?.error ?? 'Impossible de charger les fichiers';
+        this.loading = false;
+      }
+    });
+  }
+
+  private loadSharedFiles(): void {
+    this.fileApi.getFilesSharedWithMe().subscribe({
+      next: (files) => {
+        this.sharedWithMe = files;
+      },
+      error: () => {
+        this.sharedWithMe = [];
+      }
+    });
+
+    this.fileApi.getFilesSharedByMe().subscribe({
+      next: (files) => {
+        this.sharedByMe = files;
+      },
+      error: () => {
+        this.sharedByMe = [];
+      }
+    });
+  }
+
+  private loadTenantUsers(): void {
+    this.fileApi.getTenantUsers().subscribe({
+      next: (users) => {
+        this.tenantUsers = users.filter(u => u._id !== this.authStorage.getUserId());
+      },
+      error: () => {
+        this.tenantUsers = [];
+      }
+    });
+  }
+
+  onFilePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.item(0) ?? null;
+    this.selectedFile = file;
+  }
+
+  upload(): void {
+    if (!this.selectedFile) {
+      this.error = 'Choisis un fichier avant upload';
+      return;
+    }
+
+    this.busy = true;
+    this.error = '';
+    this.success = '';
+
+    this.fileApi.upload(this.selectedFile).subscribe({
+      next: () => {
+        this.success = 'Fichier uploadé et sécurisé';
+        this.busy = false;
+        this.selectedFile = null;
+        this.loadFiles();
+      },
+      error: (response) => {
+        this.error = response?.error?.error ?? 'Upload impossible';
+        this.busy = false;
+      }
+    });
+  }
+
+  createShareLink(): void {
+    if (this.shareForm.invalid) {
+      this.shareForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.shareForm.getRawValue();
+    const isDirectShare = value.shareMode === 'direct';
+
+    if (isDirectShare && !value.recipientUserId) {
+      this.error = 'Sélectionne un destinataire';
+      return;
+    }
+
+    const payload: any = {
+      expiresInHours: Number(value.expiresInHours),
+      maxUses: Number(value.maxUses),
+      accessControl: isDirectShare ? 'recipient-only' : 'public'
+    };
+
+    if (isDirectShare) {
+      const selectedUser = this.tenantUsers.find(u => u._id === value.recipientUserId);
+      if (selectedUser) {
+        payload.recipientUserId = selectedUser._id;
+        payload.recipientEmail = selectedUser.email;
+      }
+    }
+
+    this.busy = true;
+    this.error = '';
+    this.success = '';
+
+    this.fileApi.share(value.fileId, payload).subscribe({
+      next: (result) => {
+        if (isDirectShare) {
+          const recipient = this.tenantUsers.find(u => u._id === value.recipientUserId);
+          this.success = `Fichier partagé directement avec ${recipient?.email}`;
+        } else {
+          this.success = `Lien public créé: ${result.shareUrl}`;
+        }
+        this.busy = false;
+        this.shareForm.reset({ shareMode: 'link', expiresInHours: 24, maxUses: 1 });
+        this.loadSharedFiles();
+      },
+      error: (response) => {
+        this.error = response?.error?.error ?? 'Création du lien impossible';
+        this.busy = false;
+      }
+    });
+  }
+
+  download(file: SecureFile): void {
+    this.fileApi.download(file._id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.originalName;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (response) => {
+        this.error = response?.error?.error ?? 'Téléchargement impossible';
+      }
+    });
+  }
+
+  remove(file: SecureFile): void {
+    this.fileApi.delete(file._id).subscribe({
+      next: () => {
+        this.success = 'Fichier supprimé';
+        this.loadFiles();
+      },
+      error: (response) => {
+        this.error = response?.error?.error ?? 'Suppression impossible';
+      }
+    });
+  }
+
+  ownerLabel(file: any): string {
+    if (typeof file?.ownerId === 'string') {
+      return file.ownerId;
+    }
+
+    const first = file?.ownerId?.firstName ?? '';
+    const last = file?.ownerId?.lastName ?? '';
+    const fullName = `${first} ${last}`.trim();
+    return fullName || file?.ownerId?.email || 'Unknown';
+  }
+
+  userLabel(user: TenantUser): string {
+    return `${user.firstName} ${user.lastName} (${user.email})`;
+  }
+
+  setActiveTab(tab: 'files' | 'shared-with-me' | 'shared-by-me'): void {
+    this.activeTab = tab;
+  }
+}

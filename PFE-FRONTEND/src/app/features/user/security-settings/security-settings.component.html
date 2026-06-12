@@ -1,0 +1,273 @@
+<section class="security-settings-page">
+  <div class="settings-card">
+    <div class="settings-header">
+      <div>
+        <h1>Paramètres</h1>
+          <p>Organisez vos réglages par impact réel : sécurité, profil, notifications et préférences.</p>
+      </div>
+      <div class="status-pill" [class.active]="is2FAEnabled" [class.disabled]="!is2FAEnabled">
+        {{ settingsStatusLabel }}
+      </div>
+    </div>
+
+      <div class="section-summary">
+        <div>
+          <span class="section-summary-badge">{{ sectionTitle }}</span>
+          <h2>{{ sectionTitle }}</h2>
+          <p>{{ sectionDescription }}</p>
+        </div>
+        <ul class="section-summary-list">
+          <li *ngFor="let item of sectionTouches">{{ item }}</li>
+        </ul>
+      </div>
+
+    <div class="settings-tabs">
+      <button type="button" class="tab" [class.active]="activeSection === 'security'" (click)="setActiveSection('security')">Sécurité</button>
+      <button type="button" class="tab" [class.active]="activeSection === 'profile'" (click)="setActiveSection('profile')">Profil</button>
+      <button type="button" class="tab" [class.active]="activeSection === 'preferences'" (click)="setActiveSection('preferences')">Préférences</button>
+    </div>
+
+    <div class="settings-body">
+      <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+      <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <div *ngIf="activeSection === 'security'">
+        <div class="help-text">
+          <p>
+            Gérez l'authentification à deux facteurs et le mot de passe de votre compte.
+            La 2FA renforce votre sécurité tout en conservant l'accès simple avec un code SMS.
+          </p>
+        </div>
+
+        <div class="preview-grid">
+          <article class="preview-card accent-blue">
+            <span class="card-label">Sécurité</span>
+            <strong>Protection du compte</strong>
+            <p>Activation 2FA, mot de passe et confirmations sensibles.</p>
+          </article>
+          <article class="preview-card accent-teal">
+            <span class="card-label">Notifications</span>
+            <strong>Centre d’alertes</strong>
+            <p>Préparation des canaux de notification et des préférences à venir.</p>
+          </article>
+        </div>
+
+        <div class="panel">
+          <h2>Activer / Désactiver 2FA</h2>
+          <div class="toggle-row">
+            <label class="switch">
+              <input
+                type="checkbox"
+                [checked]="is2FAEnabled"
+                (change)="onToggleChange($any($event.target).checked)"
+                [disabled]="loading"
+              />
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">2FA</span>
+          </div>
+
+          <div *ngIf="showEnablePanel" class="subpanel">
+            <h3>Activation 2FA</h3>
+            <form [formGroup]="phoneForm" class="form-grid" (ngSubmit)="sendOtp()">
+              <div class="form-group">
+                <label for="phoneNumber">Numéro de téléphone</label>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  formControlName="phoneNumber"
+                  placeholder="+21698123456"
+                  [disabled]="loading"
+                />
+                <small *ngIf="phoneForm.controls['phoneNumber'].invalid && phoneForm.controls['phoneNumber'].touched">
+                  Numéro invalide. Utilisez le format +216xxxxxxxx.
+                </small>
+              </div>
+
+              <button type="submit" class="btn btn-primary" [disabled]="loading || phoneForm.invalid">
+                <span *ngIf="!loading">Envoyer le code OTP</span>
+                <span *ngIf="loading">Envoi en cours...</span>
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="cancelAction()" [disabled]="loading">Annuler</button>
+            </form>
+          </div>
+
+          <div *ngIf="showVerifyPanel" class="subpanel">
+            <h3>Vérification OTP</h3>
+            <p>Un code a été envoyé à {{ maskedPhoneNumber || phoneNumber }}.</p>
+            <form [formGroup]="otpForm" class="form-grid" (ngSubmit)="verifyOtp()">
+              <div class="form-group">
+                <label for="otp">Code OTP</label>
+                <input
+                  id="otp"
+                  type="text"
+                  formControlName="otp"
+                  maxlength="6"
+                  placeholder="000000"
+                  inputmode="numeric"
+                  [disabled]="loading"
+                />
+                <small *ngIf="otpForm.controls['otp'].invalid && otpForm.controls['otp'].touched">
+                  Le code doit contenir 6 chiffres.
+                </small>
+              </div>
+
+              <button type="submit" class="btn btn-primary" [disabled]="loading || otpForm.invalid">
+                <span *ngIf="!loading">Vérifier OTP</span>
+                <span *ngIf="loading">Vérification...</span>
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="resendOtp()" [disabled]="loading || resendCooldown > 0">
+                Renvoyer le code{{ resendCooldown > 0 ? ' (' + resendCooldown + 's)' : '' }}
+              </button>
+              <button type="button" class="btn btn-text" (click)="cancelAction()" [disabled]="loading">Annuler</button>
+            </form>
+          </div>
+
+          <div *ngIf="showDisablePanel" class="subpanel">
+            <h3>Désactiver 2FA</h3>
+            <form [formGroup]="disableForm" class="form-grid" (ngSubmit)="disableTwoFactor()">
+              <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input
+                  id="password"
+                  type="password"
+                  formControlName="password"
+                  placeholder="Votre mot de passe"
+                  [disabled]="loading"
+                />
+                <small *ngIf="disableForm.controls['password'].invalid && disableForm.controls['password'].touched">
+                  Le mot de passe est requis (minimum 6 caractères).
+                </small>
+              </div>
+
+              <button type="submit" class="btn btn-primary" [disabled]="loading || disableForm.invalid">
+                <span *ngIf="!loading">Confirmer la désactivation</span>
+                <span *ngIf="loading">Validation...</span>
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="cancelAction()" [disabled]="loading">Annuler</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Changer le mot de passe</h2>
+          <form [formGroup]="passwordForm" class="form-grid" (ngSubmit)="changePassword()">
+            <div class="form-group">
+              <label for="newPassword">Nouveau mot de passe</label>
+              <input
+                id="newPassword"
+                type="password"
+                formControlName="newPassword"
+                placeholder="Nouveau mot de passe"
+                [disabled]="loading"
+              />
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirmer le mot de passe</label>
+              <input
+                id="confirmPassword"
+                type="password"
+                formControlName="confirmPassword"
+                placeholder="Confirmez le mot de passe"
+                [disabled]="loading"
+              />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="loading || passwordForm.invalid">
+              <span *ngIf="!loading">Mettre à jour le mot de passe</span>
+              <span *ngIf="loading">Enregistrement...</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div *ngIf="activeSection === 'profile'">
+        <div class="help-text">
+          <p>Mettez à jour votre prénom, votre nom, votre mail et votre numéro de téléphone.</p>
+        </div>
+
+        <div class="panel">
+          <h2>Profil utilisateur</h2>
+          <form [formGroup]="profileForm" class="form-grid" (ngSubmit)="saveProfile()">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input id="email" type="email" formControlName="email" />
+              <small *ngIf="profileForm.controls['email'].invalid && profileForm.controls['email'].touched">
+                Veuillez saisir un email valide.
+              </small>
+            </div>
+            <div class="form-group">
+              <label for="firstName">Prénom</label>
+              <input id="firstName" type="text" formControlName="firstName" />
+            </div>
+            <div class="form-group">
+              <label for="lastName">Nom</label>
+              <input id="lastName" type="text" formControlName="lastName" />
+            </div>
+            <div class="form-group">
+              <label for="profilePhoneNumber">Numéro de téléphone</label>
+              <input
+                id="profilePhoneNumber"
+                type="tel"
+                formControlName="phoneNumber"
+                placeholder="+21698123456"
+              />
+              <small *ngIf="profileForm.controls['phoneNumber'].invalid && profileForm.controls['phoneNumber'].touched">
+                Numéro invalide. Utilisez le format +216xxxxxxxx.
+              </small>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="loading || profileForm.invalid">
+              <span *ngIf="!loading">Enregistrer le profil</span>
+              <span *ngIf="loading">Enregistrement...</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div *ngIf="activeSection === 'preferences'">
+        <div class="help-text">
+          <p>Choisissez vos préférences d'affichage et préparez les sections de personnalisation à venir.</p>
+        </div>
+
+        <div class="panel">
+          <h2>Préférences</h2>
+          <form [formGroup]="preferencesForm" class="form-grid" (ngSubmit)="savePreferences()">
+            <div class="form-group inline-options">
+              <label>
+                <input type="radio" formControlName="theme" value="light" />
+                Mode clair
+              </label>
+              <label>
+                <input type="radio" formControlName="theme" value="dark" />
+                Mode sombre
+              </label>
+            </div>
+            <div class="form-group inline-options">
+              <label>
+                <input type="radio" formControlName="notifications" value="enabled" />
+                Notifications actives
+              </label>
+              <label>
+                <input type="radio" formControlName="notifications" value="quiet" />
+                Mode silencieux
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Enregistrer les préférences</button>
+          </form>
+        </div>
+
+        <div class="preview-grid">
+          <article class="preview-card accent-indigo">
+            <span class="card-label">À venir</span>
+            <strong>Notifications</strong>
+            <p>Gérer les alertes email, push et rappels automatiques.</p>
+          </article>
+          <article class="preview-card accent-slate">
+            <span class="card-label">À venir</span>
+            <strong>Thème & apparence</strong>
+            <p>Basculer entre light, dark et autres options d’interface.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

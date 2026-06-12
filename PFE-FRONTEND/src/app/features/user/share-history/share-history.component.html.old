@@ -1,0 +1,250 @@
+<div class="share-history-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>📋 Historique & Analyses</h1>
+        <p>Suivi détaillé de vos partages, activités et évolution du stockage</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats Cards -->
+  <div class="quick-stats">
+    <div class="stat-card stat-card-primary">
+      <div class="stat-icon">🔗</div>
+      <div class="stat-body">
+        <span class="stat-label">Partages totaux</span>
+        <strong class="stat-value">{{ shareStats?.totalShares || 0 }}</strong>
+        <span class="stat-subtext">Liens générés</span>
+      </div>
+    </div>
+
+    <div class="stat-card stat-card-secondary">
+      <div class="stat-icon">📥</div>
+      <div class="stat-body">
+        <span class="stat-label">Téléchargements</span>
+        <strong class="stat-value">{{ shareStats?.totalDownloads || 0 }}</strong>
+        <span class="stat-subtext">Total des accès</span>
+      </div>
+    </div>
+
+    <div class="stat-card stat-card-success">
+      <div class="stat-icon">👁️</div>
+      <div class="stat-body">
+        <span class="stat-label">Consultations</span>
+        <strong class="stat-value">{{ shareStats?.totalViews || 0 }}</strong>
+        <span class="stat-subtext">Vues totales</span>
+      </div>
+    </div>
+
+    <div class="stat-card stat-card-info">
+      <div class="stat-icon">✅</div>
+      <div class="stat-body">
+        <span class="stat-label">Partages actifs</span>
+        <strong class="stat-value">{{ shareStats?.activeShares || 0 }}</strong>
+        <span class="stat-subtext">En cours</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filter-header">
+      <h3>🔍 Filtres & Recherche</h3>
+    </div>
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>Statut</label>
+        <select [(ngModel)]="selectedStatus" (change)="filterActivityLogs()">
+          <option value="">Tous</option>
+          <option value="active">Actif</option>
+          <option value="revoked">Révoqué</option>
+          <option value="expired">Expiré</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Type de partage</label>
+        <select [(ngModel)]="selectedShareType" (change)="filterActivityLogs()">
+          <option value="">Tous</option>
+          <option value="direct">Direct</option>
+          <option value="link">Lien</option>
+          <option value="public">Public</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Niveau d'accès</label>
+        <select [(ngModel)]="selectedAccessLevel" (change)="filterActivityLogs()">
+          <option value="">Tous</option>
+          <option value="view">Consultation</option>
+          <option value="download">Téléchargement</option>
+          <option value="edit">Édition</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Recherche</label>
+        <input type="text" [(ngModel)]="searchQuery" (keyup)="filterActivityLogs()" placeholder="Rechercher un fichier...">
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Charts -->
+  <div class="charts-section">
+    <div class="chart-container">
+      <div class="chart-card chart-wide">
+        <div class="chart-header">
+          <div>
+            <h3>📈 Tendance d'accès</h3>
+            <p>Évolution des téléchargements et consultations</p>
+          </div>
+        </div>
+        <div class="chart-frame">
+          <canvas baseChart [type]="'line'" [data]="activityChartData" [options]="activityChartOptions"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>📊 Types de fichiers</h3>
+          <p>Répartition par format</p>
+        </div>
+        <div class="chart-frame">
+          <canvas baseChart [type]="'doughnut'" [data]="fileTypeChartData" [options]="fileTypeChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>🔐 États des partages</h3>
+          <p>Statut des liens générés</p>
+        </div>
+        <div class="chart-frame">
+          <canvas baseChart [type]="'doughnut'" [data]="statusChartData" [options]="statusChartOptions"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity History -->
+  <div class="activity-section">
+    <div class="section-header">
+      <h3>📋 Historique d'activité</h3>
+      <span class="entry-count">{{ filteredActivityLogs.length }} entrées</span>
+    </div>
+
+    <div class="activity-table" *ngIf="filteredActivityLogs.length > 0; else noActivity">
+      <div class="activity-item" *ngFor="let log of filteredActivityLogs">
+        <div class="activity-icon" [class]="'icon-' + log.type">
+          <span>{{ getActivityIcon(log.type) }}</span>
+        </div>
+        <div class="activity-details">
+          <div class="activity-name">{{ log.fileName }}</div>
+          <div class="activity-meta">
+            <span class="activity-type">{{ getActivityLabel(log.type) }}</span>
+            <span class="activity-size">{{ formatBytes(log.fileSize) }}</span>
+            <span class="activity-time">{{ formatDate(log.timestamp) }}</span>
+          </div>
+        </div>
+        <div class="activity-status" [class]="'status-' + log.status">
+          {{ log.status === 'success' ? '✅ Succès' : '❌ Échec' }}
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noActivity>
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>Aucune activité de partage pour cette période</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- File Stats Table -->
+  <div class="file-stats-section">
+    <div class="section-header">
+      <h3>📊 Détails par type de fichier</h3>
+    </div>
+
+    <div class="stats-table" *ngIf="fileTypeStats.length > 0; else noFileStats">
+      <div class="table-header">
+        <div class="col-type">Type</div>
+        <div class="col-count">Nombre</div>
+        <div class="col-size">Taille totale</div>
+        <div class="col-percent">Pourcentage</div>
+      </div>
+
+      <div class="table-row" *ngFor="let stat of fileTypeStats">
+        <div class="col-type">
+          <span class="type-badge">{{ stat.type || 'Autres' }}</span>
+        </div>
+        <div class="col-count">{{ stat.count }}</div>
+        <div class="col-size">{{ formatBytes(stat.totalSize) }}</div>
+        <div class="col-percent">
+          <div class="percent-bar">
+            <div class="percent-fill" [style.width.%]="stat.percentage"></div>
+          </div>
+          <span>{{ stat.percentage.toFixed(1) }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noFileStats>
+      <div class="empty-state">
+        <p>Aucune statistique de fichier disponible</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Storage Timeline -->
+  <div class="storage-section">
+    <div class="section-header">
+      <h3>💾 Évolution du stockage</h3>
+      <p>Utilisation au fil du temps</p>
+    </div>
+
+    <div class="storage-timeline" *ngIf="storageTimeline.length > 0; else noStorage">
+      <div class="timeline-item" *ngFor="let item of storageTimeline; let i = index">
+        <div class="timeline-marker" [style.left.%]="(i / (storageTimeline.length - 1) * 100)"></div>
+        <div class="timeline-label">
+          <span class="date">{{ item.date }}</span>
+          <span class="usage">{{ formatBytes(item.usage) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noStorage>
+      <div class="empty-state">
+        <p>Aucune donnée de stockage disponible</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Export Section -->
+  <div class="export-section">
+    <div class="section-header">
+      <h3>📥 Exporter les données</h3>
+    </div>
+    <div class="export-buttons">
+      <button class="btn btn-export" (click)="exportToCSV()">
+        📄 Exporter en CSV
+      </button>
+      <button class="btn btn-export" (click)="exportToPDF()">
+        📑 Exporter en PDF
+      </button>
+    </div>
+  </div>
+</div>

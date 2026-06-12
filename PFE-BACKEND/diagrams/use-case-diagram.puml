@@ -1,0 +1,154 @@
+@startuml PFE_Use_Case_Diagram
+
+!define CLOUDURL https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v14.0/dist
+!include CLOUDURL/ApplicationServices/CloudFormation.puml
+!include CLOUDURL/ManagementGovernance/Systems Manager.puml
+
+skinparam backgroundColor #ffffff
+skinparam componentBackgroundColor #e1f5fe
+skinparam classBackgroundColor #fff9c4
+skinparam actorBackgroundColor #c8e6c9
+
+' Acteurs
+actor "Utilisateur Régulier\n(Regular User)" as User
+actor "Administrateur Tenant\n(Tenant Admin)" as TenantAdmin
+actor "Administrateur Système\n(SuperAdmin)" as SuperAdmin
+actor "Utilisateur Externe\n(External Recipient)" as ExtUser
+
+' Paquetage principal
+package "Plateforme Cloud OpenStack + Kubernetes" {
+
+  ' === AUTHENTIFICATION & SÉCURITÉ ===
+  rectangle "Authentification & Autorisation" {
+    usecase "S'inscrire / Register" as UC_Register
+    usecase "Se connecter / Login" as UC_Login
+    usecase "Authentification 2FA / OTP" as UC_2FA
+    usecase "Gestion des rôles / Roles" as UC_Roles
+    usecase "Contrôle d'accès / RBAC" as UC_RBAC
+  }
+
+  ' === GESTION DE FICHIERS ===
+  rectangle "Gestion des Fichiers" {
+    usecase "Téléverser fichier / Upload" as UC_Upload
+    usecase "Télécharger fichier / Download" as UC_Download
+    usecase "Supprimer fichier / Delete" as UC_Delete
+    usecase "Organiser en dossiers / Folders" as UC_Folders
+    usecase "Rechercher fichiers / Search" as UC_Search
+  }
+
+  ' === PARTAGE & COLLABORATION ===
+  rectangle "Partage & Collaboration" {
+    usecase "Partager un fichier / Share" as UC_Share
+    usecase "Accéder fichier partagé / Access Shared" as UC_AccessShare
+    usecase "Gérer les partages / Manage Shares" as UC_ManageShare
+    usecase "Révoquer partage / Revoke Share" as UC_RevokeShare
+    usecase "Partage avec lien / Link Sharing" as UC_LinkShare
+  }
+
+  ' === SUPPORT & SUPPORT ===
+  rectangle "Support & Plaintes" {
+    usecase "Ouvrir ticket / Create Ticket" as UC_CreateTicket
+    usecase "Consulter tickets / View Tickets" as UC_ViewTickets
+    usecase "Commenter ticket / Add Comment" as UC_CommentTicket
+  }
+
+  ' === MONITORING & QUOTAS ===
+  rectangle "Quotas & Statistiques" {
+    usecase "Voir quota utilisateur / User Quota" as UC_UserQuota
+    usecase "Voir statistiques / Statistics" as UC_Stats
+    usecase "Notifications quota / Quota Alerts" as UC_QuotaAlert
+  }
+
+  ' === ADMIN FUNCTIONS ===
+  rectangle "Administration Tenant" {
+    usecase "Gérer utilisateurs tenant / Users Mgmt" as UC_TenantUsers
+    usecase "Superviser fichiers / File Monitoring" as UC_TenantFileMonitor
+    usecase "Gérer quotas tenant / Quota Management" as UC_TenantQuota
+    usecase "Voir tableau de bord / Dashboard" as UC_TenantDashboard
+  }
+
+  ' === SUPER ADMIN ===
+  rectangle "Administration Système" {
+    usecase "Gérer tenants / Tenant Management" as UC_ManageTenants
+    usecase "Gérer tous les utilisateurs / User Mgmt" as UC_AdminUsers
+    usecase "Supervision globale / Global Monitoring" as UC_AdminMonitor
+    usecase "Gérer plans / Plan Management" as UC_ManagePlans
+    usecase "Audit complet / Full Audit" as UC_Audit
+  }
+
+  ' === INFRASTRUCTURE (OPENSTACK) ===
+  rectangle "Infrastructure OpenStack" {
+    usecase "Provisionner instances / Provision Instances" as UC_ProvisionVMs
+    usecase "Gérer volumes / Volume Management" as UC_ManageVolumes
+    usecase "Configurer réseau / Network Config" as UC_NetworkConfig
+    usecase "Heat Orchestration Templates / HOT" as UC_Heat
+  }
+
+  ' === KUBERNETES ===
+  rectangle "Orchestration Kubernetes" {
+    usecase "Déployer applications / Deploy Apps" as UC_K8sDeploy
+    usecase "Auto-scaling / Auto-Scaling" as UC_AutoScale
+    usecase "Gérer services / Service Management" as UC_K8sServices
+    usecase "Monitoring Pods / Pod Monitoring" as UC_PodMonitor
+  }
+}
+
+' === RELATIONS ===
+
+' Utilisateur Régulier
+User --> UC_Register
+User --> UC_Login
+User --> UC_2FA
+User --> UC_Upload
+User --> UC_Download
+User --> UC_Delete
+User --> UC_Folders
+User --> UC_Search
+User --> UC_Share
+User --> UC_AccessShare
+User --> UC_ManageShare
+User --> UC_RevokeShare
+User --> UC_LinkShare
+User --> UC_CreateTicket
+User --> UC_ViewTickets
+User --> UC_CommentTicket
+User --> UC_UserQuota
+User --> UC_Stats
+
+' Utilisateur Externe
+ExtUser --> UC_AccessShare
+ExtUser --> UC_Download
+ExtUser --> UC_LinkShare
+
+' Administrateur Tenant
+TenantAdmin --> UC_Login
+TenantAdmin --> UC_2FA
+TenantAdmin --> UC_TenantUsers
+TenantAdmin --> UC_TenantFileMonitor
+TenantAdmin --> UC_TenantQuota
+TenantAdmin --> UC_TenantDashboard
+TenantAdmin --> UC_Stats
+
+' SuperAdmin
+SuperAdmin --> UC_Login
+SuperAdmin --> UC_2FA
+SuperAdmin --> UC_ManageTenants
+SuperAdmin --> UC_AdminUsers
+SuperAdmin --> UC_AdminMonitor
+SuperAdmin --> UC_ManagePlans
+SuperAdmin --> UC_Audit
+SuperAdmin --> UC_ProvisionVMs
+SuperAdmin --> UC_ManageVolumes
+SuperAdmin --> UC_NetworkConfig
+SuperAdmin --> UC_Heat
+SuperAdmin --> UC_K8sDeploy
+SuperAdmin --> UC_AutoScale
+
+' Relations entre cas d'utilisation
+UC_Login ..> UC_2FA : extends
+UC_Share ..> UC_AccessShare : enables
+UC_ManageShare --> UC_RevokeShare : includes
+UC_K8sDeploy --> UC_AutoScale : enables
+UC_Heat --> UC_ProvisionVMs : uses
+
+@enduml

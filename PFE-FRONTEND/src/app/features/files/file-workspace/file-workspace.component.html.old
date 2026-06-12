@@ -1,0 +1,1001 @@
+﻿
+    <div class="file-workspace">
+      <div class="workspace-right">
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+          <div class="header-content">
+            <div class="header-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+            </svg>
+          </div>
+          <div class="header-text">
+            <h1 *ngIf="isAdmin">Gestion des fichiers du tenant</h1>
+            <h1 *ngIf="!isAdmin">Mes fichiers sÃ©curisÃ©s</h1>
+            <p *ngIf="isAdmin">Administration et supervision des fichiers du tenant</p>
+            <p *ngIf="!isAdmin">GÃ©rez vos fichiers chiffrÃ©s en toute sÃ©curitÃ©</p>
+          </div>
+        </div>
+
+        <div class="welcome-banner" *ngIf="displayName">
+          <div class="welcome-pill">Bienvenue</div>
+          <div class="welcome-main">
+            <h2>{{ welcomeTitle }}</h2>
+            <p>{{ welcomeSubtitle }}</p>
+          </div>
+          <div class="welcome-mark" aria-hidden="true">ðŸ‘‹</div>
+        </div>
+
+        <!-- Search Component -->
+        <app-search (resultSelected)="onSearchResultSelected($event)"></app-search>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-section" *ngIf="!loading">
+        <div class="stats-grid">
+          <div class="stat-card primary">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.totalFiles }}</div>
+              <div class="stat-label">{{ isAdmin ? "Fichiers du tenant" : "Mes fichiers" }}</div>
+              <div class="stat-trend" *ngIf="stats.recentUploads > 0">
+                +{{ stats.recentUploads }} cette semaine
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-card secondary">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7,10 12,15 17,10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ formatBytes(stats.totalSize) }}</div>
+              <div class="stat-label">{{ isAdmin ? "Stockage du tenant" : "Espace utilisÃ©" }}</div>
+              <div class="stat-progress">
+                <div class="progress-bar" [style.width.%]="stats.storageUsedPercent"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-card success">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.sharedFiles }}</div>
+              <div class="stat-label">{{ isAdmin ? "Partages actifs" : "Fichiers partagÃ©s" }}</div>
+              <div class="stat-trend">Liens actifs</div>
+            </div>
+          </div>
+
+          <div class="stat-card info">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.downloadsCount }}</div>
+              <div class="stat-label">{{ isAdmin ? "TÃ©lÃ©chargements du tenant" : "Vos tÃ©lÃ©chargements" }}</div>
+              <div class="stat-trend">Total des accÃ¨s</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Section -->
+      <div class="upload-section">
+        <div class="upload-card">
+          <div class="upload-header">
+            <div class="upload-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <div class="upload-content">
+              <h3>Uploader un nouveau fichier</h3>
+              <p>Fichiers chiffrÃ©s automatiquement avec AES-256</p>
+            </div>
+          </div>
+
+          <div class="quota-banner" *ngIf="quotaSummary">
+            <div class="quota-banner-head">
+              <strong>Quota {{ quotaSummary.plan }}</strong>
+              <span class="quota-pill">{{ quotaSummary.scope }}</span>
+            </div>
+            <div class="quota-banner-body">
+              {{ formatBytes(quotaSummary.user.storageUsedBytes) }} / {{ formatBytes(quotaSummary.user.storageLimitBytes || quotaSummary.tenant.storageLimitBytes || 0) }} utilisÃ©s
+            </div>
+            <div class="stat-progress quota-progress">
+              <div class="progress-bar" [class.warning]="quotaAlertLevel === 'warning'" [class.danger]="quotaAlertLevel === 'danger'" [style.width.%]="quotaPercent"></div>
+            </div>
+            <p class="quota-note" [ngClass]="'quota-note-' + quotaAlertLevel">
+              {{ quotaAlertMessage }}
+            </p>
+          </div>
+
+          <div class="upload-form">
+            <div class="file-input-wrapper">
+              <input
+                type="file"
+                id="file-upload"
+                (change)="onFilePicked($event)"
+                class="file-input"
+                accept="*/*"
+              />
+              <label for="file-upload" class="file-input-label">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                  <polyline points="14,2 14,8 20,8"></polyline>
+                </svg>
+                <span>{{ selectedFile ? selectedFile.name : 'Choisir un fichier' }}</span>
+              </label>
+            </div>
+
+            <button
+              class="btn btn-primary btn-upload"
+              type="button"
+              (click)="upload()"
+              [disabled]="busy || !selectedFile"
+            >
+              <span *ngIf="!busy">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Uploader
+              </span>
+              <span *ngIf="busy" class="loading-spinner">Upload en cours...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs and Sidebar Container -->
+      <div class="tabs-sidebar-container modern-layout" [ngClass]="{ 'sidebar-hidden': !showFolders }">
+        <!-- Left Column: Folder Tree Sidebar -->
+        <div class="left-sidebar-column" *ngIf="showFolders">
+          <div class="sidebar-panel">
+            <div class="sidebar-panel-header">
+              <span>Arborescence</span>
+            </div>
+            <div class="folders-content">
+              <div class="folders-scroll">
+                <app-folder-tree
+                  [folders]="userFolders"
+                  [files]="files"
+                  [currentFolderId]="currentFolderId"
+                  [selectedFolderId]="selectedFolderId"
+                  (folderSelected)="onFolderSelected($event)"
+                  (folderCreated)="onFolderCreated($event)"
+                  (folderRenamed)="onFolderRenamed($event)"
+                  (folderDeleted)="onFolderDeleted($event)">
+                </app-folder-tree>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Tabs and Files -->
+        <div class="right-content-column">
+          <div class="top-panel">
+            <div class="tabs-section">
+              <div class="tabs">
+                <button class="toggle-folders-top" type="button" (click)="toggleFolders()">
+                  <svg *ngIf="showFolders" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                  <svg *ngIf="!showFolders" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon">
+                    <path d="M15 18l-6-6 6-6"/>
+                  </svg>
+                  <span>{{ showFolders ? "Masquer ðŸ“" : "Afficher ðŸ“" }}</span>
+                </button>
+                <button
+                  class="tab"
+                  [class.active]="activeTab === 'files'"
+                  (click)="setActiveTab('files')"
+                >
+                  <span>{{ isAdmin ? "Fichiers" : "Mes fichiers" }}</span>
+                  <span class="tab-count">{{ sortedDisplayedFiles.length }}</span>
+                </button>
+
+                <button
+                  class="tab"
+                  [class.active]="activeTab === 'shared-with-me'"
+                  (click)="setActiveTab('shared-with-me')"
+                >
+                  <span>PartagÃ©s avec moi</span>
+                  <span class="tab-count">{{ sortedDisplayedSharedWithMe.length }}</span>
+                </button>
+
+                <button
+                  class="tab"
+                  [class.active]="activeTab === 'shared-by-me'"
+                  (click)="setActiveTab('shared-by-me')"
+                >
+                  <span>PartagÃ©s par moi</span>
+                  <span class="tab-count">{{ sharedByMe.length }}</span>
+                </button>
+
+                <button
+                  class="tab"
+                  [class.active]="activeTab === 'trash'"
+                  (click)="setActiveTab('trash')"
+                >
+                  <span>Corbeille</span>
+                  <span class="tab-count">{{ sortedDisplayedHiddenSharedWithMe.length }}</span>
+                </button>
+              </div>
+
+              <div class="tabs-controls">
+                <button class="btn-advanced" type="button" (click)="toggleAdvancedFilters()">
+                  {{ showAdvancedFilters ? "Masquer options" : "Options avancÃ©es" }}
+                </button>
+              </div>
+
+              <div class="search-panel" *ngIf="!loading">
+                <input
+                  type="text"
+                  [value]="searchQuery"
+                  (input)="onSearchInput($event)"
+                  placeholder="Rechercher un fichier, dossier, expÃ©diteur..."
+                />
+              </div>
+            </div>
+
+            <div class="messages-section">
+              <p class="success" *ngIf="success">{{ success }}</p>
+              <p class="error" *ngIf="error">{{ error }}</p>
+            </div>
+          </div>
+
+          <div class="content-panel">
+            <div class="loading-state" *ngIf="loading">
+              <div class="spinner"></div>
+              <p>Chargement des fichiers...</p>
+            </div>
+
+            <div class="files-section" *ngIf="!loading && activeTab === 'files'">
+        <!-- Folder Path - Always visible and sticky -->
+        <div class="folder-path">
+          <button type="button" class="breadcrumb-link" (click)="onFolderSelected(null)" [class.active]="selectedFolderId === null">ðŸ  Tous les fichiers</button>
+          <ng-container *ngIf="selectedFolderId !== null">
+            <span class="breadcrumb-separator">/</span>
+            <ng-container *ngFor="let folder of currentFolderPath; let last = last">
+              <button
+                type="button"
+                class="breadcrumb-link"
+                [disabled]="last"
+                (click)="onFolderSelected(folder._id)"
+              >
+                {{ folder.name }}
+              </button>
+              <span class="breadcrumb-separator" *ngIf="!last">/</span>
+            </ng-container>
+          </ng-container>
+        </div>
+
+        <div class="files-header">
+          <div>
+            <h3>{{ isAdmin ? "Fichiers du tenant" : "Vos fichiers" }}</h3>
+            <div class="files-count">{{ sortedDisplayedFiles.length }} fichier{{ sortedDisplayedFiles.length > 1 ? 's' : '' }}</div>
+          </div>
+        </div>
+
+        <div class="folder-browser" *ngIf="currentFolderChildren.length > 0 || selectedFolderId !== null || pagedDisplayedFiles.length > 0">
+          <div class="folder-browser-header">
+            <div>
+              <strong>{{ selectedFolderId ? "Contenu du dossier" : "Dossiers et fichiers" }}</strong>
+              <div class="folder-browser-meta">
+                {{ currentFolderChildren.length }} dossier{{ currentFolderChildren.length > 1 ? "s" : "" }}, {{ sortedDisplayedFiles.length }} fichier{{ sortedDisplayedFiles.length > 1 ? "s" : "" }}
+              </div>
+            </div>
+            <button *ngIf="selectedFolderId !== null" type="button" class="btn btn-sm btn-secondary" (click)="onFolderSelected(null)">
+              Retour Ã  la racine
+            </button>
+          </div>
+
+          <div class="folder-cards" *ngIf="currentFolderChildren.length > 0">
+            <div
+              class="folder-card root-card"
+              *ngIf="selectedFolderId !== null"
+              (click)="onFolderSelected(null)"
+              (dragover)="onSpaceDragOver($event)"
+              (drop)="onSpaceDrop('', $event)"
+            >
+              <div class="folder-card-icon">ðŸ </div>
+              <div>
+                <div class="folder-card-title">Tous les fichiers</div>
+                <div class="folder-card-subtitle">Glisser ici pour dÃ©tacher du dossier</div>
+              </div>
+            </div>
+
+            <div
+              class="folder-card"
+              *ngFor="let folder of currentFolderChildren"
+              (click)="onFolderSelected(folder._id)"
+              (dragover)="onSpaceDragOver($event)"
+              (drop)="onSpaceDrop(folder._id, $event)"
+            >
+              <div class="folder-card-icon">ðŸ“</div>
+              <div class="folder-card-content">
+                <div class="folder-card-title">{{ folder.name }}</div>
+                <div class="folder-card-subtitle">{{ getSpaceCount(folder._id) }} fichier{{ getSpaceCount(folder._id) > 1 ? "s" : "" }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Files list integrated into folder browser -->
+          <div class="files-in-folder" *ngIf="pagedDisplayedFiles.length > 0">
+            <div class="files-list-header">
+              <h4>Fichiers {{ selectedFolderId ? "dans ce dossier" : "racine" }}</h4>
+            </div>
+
+            <div class="list-controls" *ngIf="showAdvancedFilters">
+              <div class="page-size-control">
+                <span>Par page</span>
+                <select [value]="filesPageSize" (change)="onFilesPageSizeChange($event)">
+                  <option [value]="6">6</option>
+                  <option [value]="8">8</option>
+                  <option [value]="12">12</option>
+                  <option [value]="16">16</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="files-list">
+              <div class="file-row file-row-header">
+                <button class="header-sort" type="button" (click)="toggleFilesSort('name')">
+                  <span>Fichier</span>
+                  <span class="sort-icon">{{ getFilesSortIcon('name') }}</span>
+                </button>
+                <button class="header-sort" type="button" (click)="toggleFilesSort('size')">
+                  <span>Taille</span>
+                  <span class="sort-icon">{{ getFilesSortIcon('size') }}</span>
+                </button>
+                <button class="header-sort" type="button" (click)="toggleFilesSort('date')">
+                  <span>Date</span>
+                  <span class="sort-icon">{{ getFilesSortIcon('date') }}</span>
+                </button>
+                <span>Actions</span>
+              </div>
+
+              <div class="file-row" *ngFor="let file of pagedDisplayedFiles" draggable="true" (dragstart)="onFileDragStart(file)" (dragend)="onFileDragEnd()">
+                <div class="file-name">{{ file.originalName }}</div>
+                <div class="file-meta">{{ formatBytes(file.size || 0) }}</div>
+                <div class="file-meta">{{ file.createdAt ? formatDate(file.createdAt) : 'Date inconnue' }}</div>
+                <div class="file-row-actions">
+                  <button class="icon-btn" type="button" title="Modifier" (click)="openFileSettings(file)">
+                    <svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="currentColor"/></svg>
+                  </button>
+                  <button class="icon-btn" type="button" title="TÃ©lÃ©charger" (click)="download(file)">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button class="icon-btn" type="button" title="Partager" (click)="openShareModal(file)">
+                    <svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 6l-4-4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 2v11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  </button>
+                  <button class="icon-btn" type="button" title="Supprimer" (click)="remove(file)">
+                    <svg viewBox="0 0 24 24"><path d="M3 6h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="pager" *ngIf="filesTotalPages > 1">
+              <button class="btn btn-sm btn-secondary" type="button" (click)="prevFilesPage()" [disabled]="filesPage <= 1">PrÃ©cÃ©dent</button>
+              <span>Page {{ filesPage }} / {{ filesTotalPages }}</span>
+              <button class="btn btn-sm btn-secondary" type="button" (click)="nextFilesPage()" [disabled]="filesPage >= filesTotalPages">Suivant</button>
+            </div>
+          </div>
+
+          <ng-template #noFiles>
+            <div class="empty-state">
+              <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                  <line x1="3" y1="7" x2="21" y2="7"></line>
+                </svg>
+              </div>
+              <h4>Aucun fichier dans ce dossier</h4>
+              <p>Les fichiers uploadÃ©s dans ce dossier apparaÃ®tront ici</p>
+            </div>
+          </ng-template>
+        </div>
+
+        </div>
+
+        </div>
+
+        </div>
+
+        </div>
+
+      <!-- File Settings Modal -->
+      <div class="share-modal-backdrop" *ngIf="showFileSettingsModal" (click)="closeFileSettings()">
+        <div class="share-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>ðŸ”§ ParamÃ¨tres du fichier: {{ editingFile?.originalName }}</h3>
+            <button class="modal-close" (click)="closeFileSettings()" type="button">Ã—</button>
+          </div>
+
+          <form [formGroup]="fileSettingsForm" (ngSubmit)="saveFileSettings()" class="share-form">
+            
+            <div class="form-group">
+              <label class="form-label">ðŸ“ Description</label>
+              <textarea formControlName="description" class="form-input" rows="3" placeholder="Ajouter une description du fichier"></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">ðŸ“… Date d'expiration</label>
+                <input type="datetime-local" formControlName="expirationDate" class="form-input">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">â¬‡ï¸ TÃ©lÃ©chargements max</label>
+                <input type="number" formControlName="maxDownloads" class="form-input" min="1" max="1000" placeholder="Ex: 5">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">ðŸ” Statut du fichier</label>
+                <select formControlName="status" class="form-select">
+                  <option value="active">âœ… Actif - TÃ©lÃ©chargement autorisÃ©</option>
+                  <option value="blocked">ðŸš« Suspendu - TÃ©lÃ©chargement bloquÃ©</option>
+                  <option value="expired">â° ExpirÃ© - Date dÃ©passÃ©e</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">ðŸŒ IPs autorisÃ©es</label>
+                <input type="text" formControlName="allowedIPsText" class="form-input" placeholder="192.168.1.10, 10.0.0.1">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" (click)="closeFileSettings()">Annuler</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy">
+                <span *ngIf="!busy">ðŸ’¾ Enregistrer</span>
+                <span *ngIf="busy">â³ Sauvegarde...</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Shared Files Sections -->
+      <div class="files-section" *ngIf="!loading && activeTab === 'shared-with-me'">
+        <div class="files-header">
+          <h3>Fichiers partagÃ©s avec vous</h3>
+          <div class="files-count">{{ sortedDisplayedSharedWithMe.length }} fichier{{ sortedDisplayedSharedWithMe.length > 1 ? "s" : "" }}</div>
+        </div>
+
+        <div class="shared-filters" *ngIf="showAdvancedFilters">
+          <label>
+            ExpÃ©diteur
+            <select [value]="sharedWithMeSenderId" (change)="onSharedWithMeSenderChange($event)">
+              <option value="">Tous</option>
+              <option *ngFor="let sender of sharedWithMeSenderOptions" [value]="sender.id">{{ sender.label }}</option>
+            </select>
+          </label>
+
+          <button class="btn btn-sm btn-secondary" type="button" (click)="resetSharedWithMeFilters()" [disabled]="!sharedWithMeSenderId">
+            RÃ©initialiser
+          </button>
+        </div>
+
+        <div class="list-controls compact" *ngIf="showAdvancedFilters">
+          <label>
+            Trier
+            <select [value]="sharedSortBy" (change)="onSharedSortChange($event)">
+              <option value="date_desc">Date (plus rÃ©cent)</option>
+              <option value="date_asc">Date (plus ancien)</option>
+              <option value="name_asc">Nom (A-Z)</option>
+              <option value="name_desc">Nom (Z-A)</option>
+              <option value="sender_asc">ExpÃ©diteur (A-Z)</option>
+              <option value="sender_desc">ExpÃ©diteur (Z-A)</option>
+            </select>
+          </label>
+
+          <label>
+            Par page
+            <select [value]="sharedPageSize" (change)="onSharedPageSizeChange($event)">
+              <option [value]="4">4</option>
+              <option [value]="6">6</option>
+              <option [value]="10">10</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="shared-grid" *ngIf="pagedDisplayedSharedWithMe.length > 0; else noSharedWithMe">
+          <div class="shared-card" *ngFor="let shared of pagedDisplayedSharedWithMe">
+            <div class="shared-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="shared-info">
+              <h4>{{ shared.file.originalName }}</h4>
+              <p>PartagÃ© par {{ shared.sharedBy?.firstName }} {{ shared.sharedBy?.lastName }}</p>
+              <div class="shared-note" *ngIf="shared.shareSubject || shared.shareDescription">
+                <strong *ngIf="shared.shareSubject">{{ shared.shareSubject }}</strong>
+                <p *ngIf="shared.shareDescription">{{ shared.shareDescription }}</p>
+              </div>
+              <div class="shared-meta">
+                <span>{{ formatBytes(shared.file.size || 0) }}</span>
+                <span>Expire le {{ formatDate(shared.expiresAt) }}</span>
+              </div>
+            </div>
+            <div class="shared-actions">
+              <button class="btn btn-sm btn-secondary" (click)="scanSharedFile(shared)" type="button" [disabled]="shared.scanStatus === 'scanning'">
+                <span *ngIf="shared.scanStatus !== 'scanning'">RÃ©-analyser</span>
+                <span *ngIf="shared.scanStatus === 'scanning'">Analyse...</span>
+              </button>
+              <button class="btn btn-sm btn-primary" (click)="downloadSharedFile(shared)" type="button">
+                TÃ©lÃ©charger
+              </button>
+              <button class="btn btn-sm btn-secondary" (click)="hideSharedForMe(shared)" type="button">
+                Supprimer de mon espace
+              </button>
+            </div>
+            <div class="shared-scan-note" *ngIf="shared.scanError">
+              {{ shared.scanError }}
+            </div>
+          </div>
+        </div>
+
+        <div class="pager" *ngIf="sharedTotalPages > 1">
+          <button class="btn btn-sm btn-secondary" type="button" (click)="prevSharedPage()" [disabled]="sharedPage <= 1">PrÃ©cÃ©dent</button>
+          <span>Page {{ sharedPage }} / {{ sharedTotalPages }}</span>
+          <button class="btn btn-sm btn-secondary" type="button" (click)="nextSharedPage()" [disabled]="sharedPage >= sharedTotalPages">Suivant</button>
+        </div>
+
+        <ng-template #noSharedWithMe>
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h4>Aucun fichier partagÃ©</h4>
+            <p>Les fichiers partagÃ©s avec vous apparaÃ®tront ici</p>
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- Trash Section -->
+      <div class="files-section" *ngIf="!loading && activeTab === 'trash'">
+        <div class="files-header">
+          <h3>Corbeille locale</h3>
+          <div class="files-count">{{ sortedDisplayedHiddenSharedWithMe.length }} Ã©lÃ©ment{{ sortedDisplayedHiddenSharedWithMe.length > 1 ? "s" : "" }}</div>
+        </div>
+
+        <div class="list-controls compact" *ngIf="showAdvancedFilters">
+          <label>
+            Trier
+            <select [value]="trashSortBy" (change)="onTrashSortChange($event)">
+              <option value="date_desc">Date (plus rÃ©cent)</option>
+              <option value="date_asc">Date (plus ancien)</option>
+              <option value="name_asc">Nom (A-Z)</option>
+              <option value="name_desc">Nom (Z-A)</option>
+            </select>
+          </label>
+
+          <label>
+            Par page
+            <select [value]="trashPageSize" (change)="onTrashPageSizeChange($event)">
+              <option [value]="4">4</option>
+              <option [value]="6">6</option>
+              <option [value]="10">10</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="list-controls compact" *ngIf="showAdvancedFilters">
+          <label>
+            Trier
+            <select [value]="trashSortBy" (change)="onTrashSortChange($event)">
+              <option value="date_desc">Date (plus rÃ©cent)</option>
+              <option value="date_asc">Date (plus ancien)</option>
+              <option value="name_asc">Nom (A-Z)</option>
+              <option value="name_desc">Nom (Z-A)</option>
+            </select>
+          </label>
+
+          <label>
+            Par page
+            <select [value]="trashPageSize" (change)="onTrashPageSizeChange($event)">
+              <option [value]="4">4</option>
+              <option [value]="6">6</option>
+              <option [value]="10">10</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="shared-grid" *ngIf="pagedDisplayedHiddenSharedWithMe.length > 0; else noTrashItems">
+          <div class="shared-card" *ngFor="let shared of pagedDisplayedHiddenSharedWithMe">
+            <div class="shared-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+
+            <div class="shared-info">
+              <h4>{{ shared.file.originalName }}</h4>
+              <p>MasquÃ© localement depuis votre espace</p>
+              <div class="shared-meta">
+                <span>{{ formatBytes(shared.file.size || 0) }}</span>
+                <span>Expire le {{ formatDate(shared.expiresAt) }}</span>
+              </div>
+            </div>
+
+            <div class="shared-actions">
+              <button class="btn btn-sm btn-primary" type="button" (click)="restoreSharedForMe(shared)">
+                Restaurer
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pager" *ngIf="trashTotalPages > 1">
+          <button class="btn btn-sm btn-secondary" type="button" (click)="prevTrashPage()" [disabled]="trashPage <= 1">PrÃ©cÃ©dent</button>
+          <span>Page {{ trashPage }} / {{ trashTotalPages }}</span>
+          <button class="btn btn-sm btn-secondary" type="button" (click)="nextTrashPage()" [disabled]="trashPage >= trashTotalPages">Suivant</button>
+        </div>
+
+        <ng-template #noTrashItems>
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h4>Corbeille vide</h4>
+            <p>Les Ã©lÃ©ments masquÃ©s ou supprimÃ©s rÃ©apparaÃ®tront ici.</p>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+
+      <!-- Shared By Me Section -->
+      <div class="files-section" *ngIf="!loading && activeTab === 'shared-by-me'">
+        <div class="files-header">
+          <h3>Fichiers partagÃ©s par vous</h3>
+          <div class="files-count">{{ sharedByMe.length }} partage{{ sharedByMe.length > 1 ? "s" : "" }}</div>
+        </div>
+
+        <div class="list-controls compact" *ngIf="showAdvancedFilters">
+          <label>
+            Trier
+            <select [value]="sharedByMeSortBy" (change)="onSharedByMeSortChange($event)">
+              <option value="date_desc">Date (plus rÃ©cent)</option>
+              <option value="date_asc">Date (plus ancien)</option>
+              <option value="name_asc">Nom (A-Z)</option>
+              <option value="name_desc">Nom (Z-A)</option>
+            </select>
+          </label>
+
+          <label>
+            Par page
+            <select [value]="sharedByMePageSize" (change)="onSharedByMePageSizeChange($event)">
+              <option [value]="4">4</option>
+              <option [value]="6">6</option>
+              <option [value]="10">10</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="shared-by-me-grid" *ngIf="sharedByMe.length > 0; else noSharedByMe">
+          <div class="shared-by-me-card" *ngFor="let shared of sharedByMe">
+            <div class="shared-card-header">
+              <div class="file-info">
+                <span class="file-icon">{{ getFileIcon(shared.file) }}</span>
+                <div class="file-details">
+                  <h4>{{ shared.file.originalName }}</h4>
+                  <div class="file-meta">
+                    <span class="file-size">{{ formatBytes(shared.file.size || 0) }}</span>
+                    <span class="file-date">PartagÃ© le {{ shared.createdAt ? formatDate(shared.createdAt) : 'Date inconnue' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="share-status">
+                <span class="status-badge" [class]="'status-' + getShareStatus(shared)">
+                  {{ getShareStatusText(shared) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="share-details">
+              <div class="share-info-row">
+                <div class="share-info-item">
+                  <span class="info-label">Destinataires:</span>
+                  <span class="info-value">
+                    <span *ngIf="shared.recipientUsers && shared.recipientUsers.length > 0">
+                      {{ getRecipientNames(shared) }}
+                    </span>
+                    <span *ngIf="(!shared.recipientUsers || shared.recipientUsers.length === 0) && shared.recipientEmail">
+                      {{ shared.recipientEmail }}
+                    </span>
+                    <span *ngIf="(!shared.recipientUsers || shared.recipientUsers.length === 0) && !shared.recipientEmail">
+                      Lien public
+                    </span>
+                  </span>
+                </div>
+                <div class="share-info-item">
+                  <span class="info-label">Expiration:</span>
+                  <span class="info-value">{{ formatDate(shared.expiresAt) }}</span>
+                </div>
+              </div>
+
+              <div class="share-info-row">
+                <div class="share-info-item">
+                  <span class="info-label">Utilisations:</span>
+                  <span class="info-value">{{ shared.usedCount || 0 }} / {{ shared.maxUses }}</span>
+                </div>
+                <div class="share-info-item">
+                  <span class="info-label">TÃ©lÃ©chargements:</span>
+                  <span class="info-value">{{ getDownloadCount(shared) }}</span>
+                </div>
+              </div>
+
+              <div class="share-actions">
+                <button class="btn btn-sm btn-outline" type="button" (click)="copyShareLink(shared)" *ngIf="shared.shareUrl">
+                  ðŸ“‹ Copier lien
+                </button>
+                <button class="btn btn-sm btn-outline" type="button" (click)="viewShareDetails(shared)">
+                  ðŸ‘ï¸ DÃ©tails
+                </button>
+                <button class="btn btn-sm btn-danger" type="button" (click)="revokeShare(shared)">
+                  ðŸš« Annuler partage
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noSharedByMe>
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h4>Aucun partage actif</h4>
+            <p>Les fichiers que vous partagez apparaÃ®tront ici</p>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+      <div class="share-modal-backdrop" *ngIf="showShareModal" (click)="closeShareModal()">
+        <div class="share-modal modern-share-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <h3>ðŸ“¤ Partager le fichier</h3>
+              <p class="modal-subtitle">{{ selectedFileForShare?.originalName }}</p>
+            </div>
+            <button class="modal-close" (click)="closeShareModal()" type="button">Ã—</button>
+
+          <form [formGroup]="shareForm" (ngSubmit)="createShareLink()" class="share-form">
+            
+            <!-- Row 1: Mode + Expiration -->
+            <div class="form-row row-primary">
+              <div class="form-group">
+                <label>Mode</label>
+                <select formControlName="shareMode" required>
+                  <option value="link">ðŸŒ Lien public</option>
+                  <option value="direct">ðŸ”’ Utilisateur(s)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Expiration</label>
+                <div class="input-with-unit">
+                  <input type="number" formControlName="expiresInHours" min="1" max="168" placeholder="48" required>
+                  <span class="unit">h</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Max tÃ©lÃ©chargements</label>
+                <div class="input-with-unit">
+                  <input type="number" formControlName="maxUses" min="1" max="100" placeholder="10" required>
+                  <span class="unit">Ã—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2: Recipients (Direct mode) -->
+            <div class="form-row row-secondary" *ngIf="shareForm.get('shareMode')?.value === 'direct'">
+              <div class="form-group full-width">
+                <div class="field-head field-head-row">
+                  <div>
+                    <label>Destinataires</label>
+                    <span class="field-hint">Clique sur un chip pour sÃ©lectionner ou retirer un utilisateur</span>
+                  </div>
+
+                  <div class="selection-badge" *ngIf="filteredTenantUsers.length">
+                    {{ shareForm.get('recipientUserIds')?.value?.length || 0 }} sÃ©lectionnÃ©(s) / {{ filteredTenantUsers.length }}
+                  </div>
+                </div>
+
+                <div class="recipient-search">
+                  <input
+                    type="text"
+                    [value]="recipientSearch"
+                    (input)="recipientSearch = $any($event.target).value"
+                    placeholder="Rechercher un utilisateur..."
+                  >
+                </div>
+
+                <div class="recipient-chips">
+                  <button
+                    type="button"
+                    class="recipient-chip"
+                    *ngFor="let user of filteredTenantUsers"
+                    [class.selected]="isRecipientSelected(user._id)"
+                    (click)="toggleRecipient(user._id)"
+                  >
+                    <span class="chip-avatar">{{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}</span>
+                    <span class="chip-text">
+                      <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                      <small>{{ user.email }}</small>
+                    </span>
+                  </button>
+                </div>
+
+                <div class="selected-recipients" *ngIf="shareForm.get('recipientUserIds')?.value?.length">
+                  {{ shareForm.get('recipientUserIds')?.value?.length }} destinataire(s) sÃ©lectionnÃ©(s)
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 3: Subject + Description -->
+            <div class="form-row row-secondary share-details-row" *ngIf="shareForm.get('shareMode')?.value === 'direct'">
+              <div class="form-group share-subject-col">
+                <label>Objet du partage (optionnel)</label>
+                <input type="text" formControlName="shareSubject" placeholder="Ex: RÃ©vision projet Q2">
+              </div>
+
+              <div class="form-group share-description-col">
+                <label>Description (optionnel)</label>
+                <textarea formControlName="shareDescription" rows="2" placeholder="Ajouter des dÃ©tails..."></textarea>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" (click)="closeShareModal()">Annuler</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy">
+                <span *ngIf="!busy">{{ shareForm.get("shareMode")?.value === "direct" ? "ðŸ“¤ Partager" : "ðŸ”— CrÃ©er lien" }}</span>
+                <span *ngIf="busy">â³ CrÃ©ation...</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="share-modal-backdrop" *ngIf="publicShareResult" (click)="closePublicSharePopup()">
+        <div class="share-modal modern-share-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <h3>ðŸ”— Lien public crÃ©Ã©</h3>
+              <p class="modal-subtitle">Partage prÃªt. Copiez rapidement le lien.</p>
+            </div>
+            <button class="modal-close" (click)="closePublicSharePopup()" type="button">Ã—</button>
+          </div>
+
+          <div class="share-form">
+            <div class="public-link-box">
+              <label>Lien de tÃ©lÃ©chargement</label>
+              <input
+                type="text"
+                [value]="publicShareResult?.shareUrl || ''"
+                readonly
+                (focus)="$any($event.target).select()"
+              >
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" (click)="closePublicSharePopup()">Fermer</button>
+              <button type="button" class="btn btn-primary" (click)="copyPublicShareLink()">
+                {{ publicShareResult?.copied ? "âœ… CopiÃ©" : "ðŸ“‹ Copier le lien" }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scan-modal-backdrop" *ngIf="scanResult" (click)="closeScanModal()">
+        <div class="share-modal modern-share-modal scan-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <h3>{{ scanResult.isInfected ? "âš ï¸ RÃ©sultat de l'analyse" : "âœ… RÃ©sultat de l'analyse" }}</h3>
+              <p class="modal-subtitle">{{ scanResult.originalName }}</p>
+            </div>
+            <button class="modal-close" (click)="closeScanModal()" type="button">Ã—</button>
+          </div>
+
+          <div class="share-form scan-result-panel">
+            <div class="scan-summary">
+              <div class="scan-line">
+                <span>Statut</span>
+                <strong>{{ scanResult.isInfected ? "InfectÃ©" : "Propre" }}</strong>
+              </div>
+              <div class="scan-line" *ngIf="scanResult.fileHash">
+                <span>Hash SHA-256</span>
+                <strong>{{ scanResult.fileHash }}</strong>
+              </div>
+              <div class="scan-line" *ngIf="scanResult.warning">
+                <span>Alerte</span>
+                <strong>{{ scanResult.warning }}</strong>
+              </div>
+            </div>
+
+            <div class="scan-details">
+              <div class="detail-block">
+                <h4>ClamAV</h4>
+                <p>{{ scanResult.clamavResult?.isInfected ? "Menace dÃ©tectÃ©e" : "Aucun virus dÃ©tectÃ©" }}</p>
+                <p *ngIf="scanResult.clamavResult?.viruses?.length">Moteurs dÃ©tecteurs: {{ scanResult.clamavResult?.viruses?.join(', ') }}</p>
+                <p *ngIf="scanResult.clamavResult?.warning">{{ scanResult.clamavResult?.warning }}</p>
+              </div>
+
+              <div class="detail-block" *ngIf="scanResult.virustotalResult">
+                <h4>VirusTotal</h4>
+                <p>{{ scanResult.virustotalResult.isInfected ? "Menace dÃ©tectÃ©e" : "Aucun virus dÃ©tectÃ©" }}</p>
+                <p *ngIf="scanResult.virustotalResult.detectionRatio">Ratio: {{ scanResult.virustotalResult.detectionRatio }}</p>
+                <p *ngIf="scanResult.virustotalResult.warning">{{ scanResult.virustotalResult.warning }}</p>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" (click)="closeScanModal()">Fermer</button>
+              <button *ngIf="!scanResult.isInfected" type="button" class="btn btn-primary" (click)="downloadFromScanModal()">
+                TÃ©lÃ©charger
+              </button>
+              <button *ngIf="scanResult.virustotalUrl" type="button" class="btn btn-neutral" (click)="openExternalUrl(scanResult.virustotalUrl)">
+                Voir sur VirusTotal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  

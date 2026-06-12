@@ -1,0 +1,187 @@
+@startuml PFE_Sequence_System_Diagram
+
+title PFE Backend - Diagramme de Séquence Système
+
+actor User as user
+participant "Frontend\n(Web/Mobile)" as frontend
+participant "API Gateway\n(Nginx/Kong)" as gateway
+participant "OpenStack\nServices" as openstack
+participant "Kubernetes\nCluster" as k8s
+participant "Database\n(PostgreSQL)" as db
+participant "Cache\n(Redis)" as cache
+participant "Storage\n(Swift/MinIO)" as storage
+participant "Monitoring\n(Prometheus)" as monitor
+
+== 1. AUTHENTIFICATION & LOGIN ==
+
+user -> frontend: Entrer credentials
+frontend -> gateway: POST /api/auth/login
+gateway -> openstack: Verify via Keystone
+openstack -> db: Query User
+db -> openstack: User data
+openstack -> gateway: JWT Token
+gateway -> cache: Store session
+gateway -> frontend: 200 OK + Token
+frontend -> user: Logged in
+
+== 2. UPLOAD FICHIER ==
+
+user -> frontend: Sélectionner fichier
+frontend -> gateway: POST /api/files/upload\n(multipart)
+gateway -> k8s: Route request
+k8s -> gateway: File Encryption Service
+gateway -> k8s: Chiffrer fichier (AES-256)
+k8s -> k8s: Calculer hash
+k8s -> storage: Upload encrypted file
+storage -> cache: Update metadata
+cache -> db: Save File record
+db -> k8s: File created
+k8s -> gateway: File ID + URL
+gateway -> frontend: 201 Created
+frontend -> user: Upload complete
+
+== 3. PARTAGE FICHIER ==
+
+user -> frontend: Partager avec user2@email.com
+frontend -> gateway: POST /api/files/{id}/share
+gateway -> k8s: ShareService.createShare()
+k8s -> db: Query File
+db -> k8s: File details
+k8s -> db: Create ShareHistory record
+db -> k8s: Share ID
+k8s -> k8s: Generate tokenHash
+k8s -> db: Create SharedLink
+db -> k8s: Token + Link
+k8s -> openstack: Send email via notification service
+openstack -> k8s: Email sent
+k8s -> monitor: Log metric
+monitor -> k8s: OK
+k8s -> gateway: Share URL
+gateway -> frontend: 200 OK
+frontend -> user: Share created
+
+== 4. ACCÈS FICHIER PARTAGÉ ==
+
+actor External as external
+external -> frontend: Cliquer sur shared link
+frontend -> gateway: GET /api/files/shared/{token}
+gateway -> k8s: Validate token
+k8s -> db: Query SharedLink
+db -> k8s: Link details
+alt Token valid && not expired
+    k8s -> db: Query File
+    db -> k8s: File metadata
+    k8s -> storage: Get encrypted file
+    storage -> k8s: Encrypted data
+    k8s -> k8s: Decrypt (AES-256)
+    k8s -> monitor: Log access
+    monitor -> k8s: OK
+    k8s -> gateway: Decrypted file
+    gateway -> frontend: File stream
+    frontend -> external: Download complete
+else Token invalid or expired
+    k8s -> gateway: 401 Unauthorized
+    gateway -> frontend: Error
+    frontend -> external: Access denied
+end
+
+== 5. GESTION QUOTA ==
+
+user -> frontend: Voir mon quota
+frontend -> gateway: GET /api/users/quota
+gateway -> k8s: QuotaService.getUserQuota()
+k8s -> db: Query User + Plan
+db -> k8s: User quota limits
+k8s -> db: Aggregate File sizes
+db -> k8s: Total storage used
+k8s -> k8s: Calculate percentages
+k8s -> cache: Store quota cache (TTL: 1h)
+k8s -> gateway: Quota data
+gateway -> frontend: 200 OK
+frontend -> user: Show quota bar
+
+user -> frontend: Upload 500MB file
+frontend -> gateway: POST /api/files/upload
+gateway -> k8s: CheckQuota before upload
+k8s -> cache: Get cached quota
+cache -> k8s: Used: 900MB, Limit: 1000MB
+alt Quota exceeded
+    k8s -> gateway: 429 Quota exceeded
+    gateway -> frontend: Error
+    frontend -> user: Upload limit reached
+else Within quota
+    k8s -> k8s: Process upload (as before)
+end
+
+== 6. CRÉATION TICKET SUPPORT ==
+
+user -> frontend: Créer ticket (Category: Technical)
+frontend -> gateway: POST /api/complaints
+gateway -> k8s: ComplaintService.create()
+k8s -> db: Save Complaint
+db -> k8s: Ticket ID (REC-2025-XXXX)
+k8s -> k8s: Generate unique ticketId
+k8s -> db: Create notification for admins
+db -> k8s: Notif created
+k8s -> openstack: Send email to TenantAdmins
+openstack -> k8s: Email queued
+k8s -> monitor: Log ticket metric
+monitor -> k8s: OK
+k8s -> gateway: Ticket ID
+gateway -> frontend: 201 Created
+frontend -> user: Ticket created: REC-2025-XXXX
+
+admin -> frontend: Voir tickets
+frontend -> gateway: GET /api/complaints
+gateway -> k8s: ComplaintService.getByTenant()
+k8s -> db: Query complaints (tenantId)
+db -> k8s: List tickets
+k8s -> cache: Store in cache (30 min)
+k8s -> gateway: Tickets list
+gateway -> frontend: 200 OK
+frontend -> admin: Display tickets
+
+== 7. MONITORING & ALERTING ==
+
+loop every 15 seconds
+    monitor -> k8s: Scrape /metrics
+    k8s -> monitor: Prometheus metrics
+    monitor -> monitor: Store in TSDB
+    monitor -> monitor: Evaluate alert rules
+    alt High error rate detected
+        monitor -> monitor: Alert triggered
+        monitor -> openstack: Send notification (Slack/Email)
+        openstack -> monitor: Notification sent
+    end
+end
+
+== 8. AUTO-SCALING (KUBERNETES) ==
+
+monitor -> monitor: CPU > 70% for 2 min
+monitor -> k8s: HPA evaluation
+k8s -> k8s: Current replicas: 3
+k8s -> k8s: Calculate desired: 6
+k8s -> k8s: Create new pods
+k8s -> k8s: Pull image from registry
+k8s -> k8s: Mount volumes
+k8s -> k8s: Setup networking
+k8s -> monitor: New pods running
+monitor -> monitor: Update metrics
+
+== 9. BACKUP AUTOMATIQUE ==
+
+loop every 24h at 2 AM
+    k8s -> db: Start backup
+    db -> k8s: Backup data stream
+    k8s -> storage: Upload backup to Swift
+    storage -> k8s: Backup complete
+    k8s -> db: Update backup metadata
+    k8s -> monitor: Log backup metric
+    monitor -> k8s: OK
+    alt Backup failed
+        monitor -> monitor: Alert triggered
+        monitor -> openstack: Send alert
+    end
+end
+
+@enduml

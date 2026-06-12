@@ -1,0 +1,288 @@
+<div class="admin-dashboard" [class.dark-mode]="isDarkMode">
+  <div class="dashboard-shell">
+    <section class="dashboard-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Superadmin Dashboard</p>
+        <h1>Vue plateforme</h1>
+        <p class="hero-description">Pilotez la santé de votre plateforme avec une vue claire, des métriques critiques et des actions directes.</p>
+      </div>
+
+      <div class="hero-actions">
+        <button pButton type="button" icon="pi pi-refresh" label="Actualiser" class="p-button-outlined p-button-sm" (click)="loadStats()" [disabled]="loading"></button>
+        <button pButton type="button" icon="pi pi-adjust" class="p-button-text p-button-sm" (click)="toggleTheme()" [label]="isDarkMode ? 'Clair' : 'Sombre'"></button>
+      </div>
+    </section>
+
+    <section class="kpi-grid">
+      <app-kpi-card icon="users" label="Utilisateurs" [value]="stats?.totalUsers || 0" [subtitle]="stats?.activeUsers + ' actifs'" sparkData="0,10 25,18 50,12 75,20 100,16" tone="success" [animate]="true"></app-kpi-card>
+      <app-kpi-card icon="tenants" label="Tenants" [value]="stats?.totalTenants || 0" [subtitle]="'Tenants gérés'" sparkData="0,6 25,16 50,10 75,18 100,14"></app-kpi-card>
+      <app-kpi-card icon="files" label="Fichiers" [value]="stats?.totalFiles || 0" [subtitle]="'Stockés'" sparkData="0,8 25,14 50,9 75,16 100,12"></app-kpi-card>
+      <app-kpi-card icon="files" label="Storage" [value]="formatBytes(stats?.totalStorageUsed || 0)" [subtitle]="storageUsagePercent + '% utilisé'" tone="warning" sparkData="0,8 25,14 50,12 75,16 100,18"></app-kpi-card>
+    </section>
+    <p-card class="overview-card">
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Vue d'ensemble</p>
+          <h2>Performance de la plateforme</h2>
+        </div>
+        <span class="status-chip" [ngClass]="alerts.length ? alerts[0].tone : 'info'">{{ alerts.length ? alerts[0].title : 'Système stable' }}</span>
+      </div>
+
+      <div class="chart-summary-row">
+        <div class="mini-stat">
+          <span class="mini-label">Tenants</span>
+          <strong>{{ globalStats?.totalTenants || stats?.totalTenants || 0 }}</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-label">Utilisateurs</span>
+          <strong>{{ globalStats?.totalUsers || stats?.totalUsers || 0 }}</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-label">Fichiers</span>
+          <strong>{{ globalStats?.totalFiles || stats?.totalFiles || 0 }}</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-label">Uploads</span>
+          <strong>{{ globalStats?.totalUploads || totalUploads || 0 }}</strong>
+        </div>
+      </div>
+
+      <div class="secondary-kpi-grid">
+        <div class="secondary-kpi-card">
+          <span class="secondary-label">Stockage restant</span>
+          <strong>{{ storageRemainingPercent | number:'1.0-0' }}%</strong>
+          <small>{{ storageRemainingBytes }} restant</small>
+        </div>
+        <div class="secondary-kpi-card">
+          <span class="secondary-label">Tickets ouverts</span>
+          <strong>{{ complaintSummary.total }}</strong>
+          <small>{{ complaintSummary.openOverdue }} en retard</small>
+        </div>
+        <div class="secondary-kpi-card">
+          <span class="secondary-label">Menaces actives</span>
+          <strong>{{ malwareAlerts.length }}</strong>
+          <small>{{ alerts.length ? alerts[0].title : 'Aucune alerte' }}</small>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-control">
+          <label>Comparer</label>
+          <p-dropdown
+            [options]="metricOptions"
+            [(ngModel)]="selectedMetric"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Sélectionner un métrique"
+            (onChange)="updateTenantChart()"
+          ></p-dropdown>
+        </div>
+        <div class="filter-control">
+          <label>Tenant</label>
+          <p-dropdown
+            [options]="tenantFilters"
+            [(ngModel)]="selectedTenantId"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les tenants"
+            (onChange)="updateTenantChart()"
+          ></p-dropdown>
+        </div>
+      </div>
+
+      <div class="range-pill-row">
+        <span class="range-label">Période</span>
+        <div class="range-pill-group">
+          <button *ngFor="let range of rangeOptions" pButton type="button" class="range-pill" [ngClass]="{ active: selectedRange === range.value }" (click)="selectedRange = range.value; updateTenantChart()">
+            {{ range.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <div class="panel-head">
+          <h3>Activité multi-tenant</h3>
+          <span>{{ selectedMetric | titlecase }} · {{ selectedTenantLabel }} · {{ rangeLabel }}</span>
+        </div>
+        <apx-chart *ngIf="tenantChartSeries?.length" [series]="tenantChartSeries" [chart]="tenantChartOptions.chart!" [xaxis]="tenantChartOptions.xaxis!" [yaxis]="tenantChartOptions.yaxis!" [tooltip]="tenantChartOptions.tooltip!" [plotOptions]="tenantChartOptions.plotOptions!" [grid]="tenantChartOptions.grid!" [colors]="tenantChartOptions.colors!"></apx-chart>
+      </div>
+    </p-card>
+
+    <section class="dashboard-layout">
+      <div class="main-column">
+        <p-card class="chart-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Flux</p>
+              <h3>Transactions récentes</h3>
+            </div>
+          </div>
+          <apx-chart *ngIf="trendSeries?.length" [series]="trendSeries" [chart]="trendChartOptions.chart!" [stroke]="trendChartOptions.stroke!" [xaxis]="trendChartOptions.xaxis!" [tooltip]="trendChartOptions.tooltip!" [markers]="trendChartOptions.markers!" [fill]="trendChartOptions.fill!" [grid]="trendChartOptions.grid!" [colors]="trendChartOptions.colors!"></apx-chart>
+        </p-card>
+
+        <p-card class="chart-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Stockage</p>
+              <h3>Top tenants par espace</h3>
+            </div>
+          </div>
+          <apx-chart *ngIf="storageSeries?.length" [series]="storageSeries" [chart]="storageChartOptions.chart!" [xaxis]="storageChartOptions.xaxis!" [yaxis]="storageChartOptions.yaxis!" [tooltip]="storageChartOptions.tooltip!" [fill]="storageChartOptions.fill!" [grid]="storageChartOptions.grid!" [colors]="storageChartOptions.colors!"></apx-chart>
+        </p-card>
+
+        <p-card class="table-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Classement</p>
+              <h3>Top tenants</h3>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Stockage</th>
+                  <th>Fichiers</th>
+                  <th>Tickets</th>
+                  <th>Criticité</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let tenant of topTenantRows">
+                  <td>{{ tenant.tenantName }}</td>
+                  <td>{{ tenant.storageGB }} GB</td>
+                  <td>{{ tenant.files }}</td>
+                  <td>{{ tenant.complaints }}</td>
+                  <td><span class="status-chip" [ngClass]="getTenantStatus(tenant)">{{ getTenantStatus(tenant) | titlecase }}</span></td>
+                </tr>
+                <tr *ngIf="!topTenantRows?.length">
+                  <td colspan="5" class="empty-row">Aucun tenant disponible.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </p-card>
+
+        <p-card class="chart-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Quota</p>
+              <h3>Tenants proches du quota</h3>
+            </div>
+          </div>
+          <div class="quota-list">
+            <div *ngFor="let tenant of statsReport?.storage?.tenantsNearQuota || []" class="quota-row">
+              <div class="quota-meta">
+                <strong>{{ tenant.tenantName || 'Tenant inconnu' }}</strong>
+                <span>{{ tenant.storageUsagePercent ? tenant.storageUsagePercent.toFixed(0) : 0 }}%</span>
+              </div>
+              <p-progressBar [value]="tenant.storageUsagePercent || 0" [style]="{ height: '10px' }"></p-progressBar>
+            </div>
+            <div *ngIf="!(statsReport?.storage?.tenantsNearQuota?.length)">Aucun tenant critique détecté.</div>
+          </div>
+        </p-card>
+
+        <app-dashboard-timeline [events]="timelineEvents"></app-dashboard-timeline>
+      </div>
+
+      <aside class="side-column">
+        <p-card class="summary-card-key">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Réclamations</p>
+              <h3>Vue support</h3>
+            </div>
+          </div>
+          <div class="chart-summary-row">
+            <div class="mini-stat">
+              <span class="mini-label">Tickets ouverts</span>
+              <strong>{{ complaintSummary.total }}</strong>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-label">Retards</span>
+              <strong>{{ complaintSummary.openOverdue }}</strong>
+            </div>
+          </div>
+          <div class="alert-list">
+            <div *ngFor="let status of complaintSummary.byStatus" class="alert-snippet warning">
+              <strong>{{ status._id }}</strong>
+              <small>{{ status.count }} ticket(s)</small>
+            </div>
+          </div>
+        </p-card>
+
+        <p-card class="quick-actions-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Actions rapides</p>
+              <h3>Boîte à outils</h3>
+            </div>
+          </div>
+          <div class="quick-actions-grid">
+            <button *ngFor="let action of quickActions" pButton type="button" class="quick-action-button" [icon]="action.icon" label="{{ action.label }}" (click)="navigateTo(action.route)"></button>
+          </div>
+        </p-card>
+
+        <p-card class="quota-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Quotas</p>
+              <h3>Top 5 tenants</h3>
+            </div>
+          </div>
+          <div class="quota-list">
+            <div *ngFor="let tenant of topStorageTenants" class="quota-row">
+              <div class="quota-meta">
+                <strong>{{ tenant.name }}</strong>
+                <span>{{ tenant.percent }}%</span>
+              </div>
+              <p-progressBar [value]="tenant.percent" [style]="{ height: '10px' }"></p-progressBar>
+            </div>
+          </div>
+        </p-card>
+
+        <p-card class="alert-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Gestion des alertes</p>
+              <h3>Menaces actives</h3>
+            </div>
+          </div>
+          <div class="alert-list">
+            <div *ngFor="let alert of malwareAlerts" class="alert-snippet" [ngClass]="alert.status ? 'danger' : 'warning'">
+              <div class="alert-row">
+                <strong>{{ alert.originalName || 'Fichier suspect' }}</strong>
+                <small>{{ alert.status || 'En attente d’analyse' }}</small>
+              </div>
+              <p>{{ getAlertDetail(alert) }}</p>
+              <div class="alert-actions">
+                <button pButton type="button" class="p-button-text p-button-sm" icon="pi pi-search" label="Détails" (click)="openAlertDetails(alert)"></button>
+                <button pButton type="button" class="p-button-text p-button-sm" icon="pi pi-download" label="Télécharger" (click)="downloadAlert(alert)"></button>
+              </div>
+            </div>
+            <div *ngIf="!malwareAlerts?.length" class="alert-empty">Aucune menace récente détectée.</div>
+          </div>
+        </p-card>
+
+        <p-card class="shortcut-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Raccourcis clavier</p>
+              <h3>Navigation rapide</h3>
+            </div>
+          </div>
+          <div class="shortcut-grid">
+            <div *ngFor="let shortcut of shortcutLinks" class="shortcut-item">
+              <span class="keycap">{{ shortcut.keys }}</span>
+              <div>
+                <strong>{{ shortcut.label }}</strong>
+                <p>{{ shortcut.description }}</p>
+              </div>
+            </div>
+          </div>
+        </p-card>
+      </aside>
+    </section>
+  </div>
+</div>

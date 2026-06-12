@@ -1,0 +1,275 @@
+<section class="auth-layout login-layout">
+  <div class="auth-background" aria-hidden="true">
+    <span class="bg-orb orb-a"></span>
+    <span class="bg-orb orb-b"></span>
+    <span class="bg-grid"></span>
+  </div>
+
+  <div class="auth-shell">
+    <aside class="auth-aside">
+      <div class="brand-mark">
+        <span class="brand-dot"></span>
+        <span>Vault by PFE</span>
+      </div>
+
+      <p class="eyebrow">Connexion sécurisée</p>
+      <h1>Une expérience de connexion premium, claire et rapide.</h1>
+      <p class="hero-copy">
+        Accédez à votre espace en quelques secondes avec une interface pensée pour la fluidité,
+        la confiance et la productivité.
+      </p>
+
+      <div class="feature-list">
+        <article class="feature-card">
+          <span class="feature-icon security"></span>
+          <div>
+            <h3>Auth robuste</h3>
+            <p>Connexion sécurisée, 2FA et sessions gérées proprement.</p>
+          </div>
+        </article>
+
+        <article class="feature-card">
+          <span class="feature-icon speed"></span>
+          <div>
+            <h3>Flux ultra fluide</h3>
+            <p>Micro-interactions discrètes et retour visuel instantané.</p>
+          </div>
+        </article>
+
+        <article class="feature-card">
+          <span class="feature-icon clarity"></span>
+          <div>
+            <h3>Expérience nette</h3>
+            <p>Hiérarchie visuelle premium et responsive impeccable.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="trust-row">
+        <span>Conçu pour les équipes exigeantes</span>
+        <span>Chiffrement • Audit • 2FA</span>
+      </div>
+
+      <div class="preview-card" aria-hidden="true">
+        <div class="preview-topline">
+          <span>Session active</span>
+          <span>99.9% uptime</span>
+        </div>
+        <div class="preview-metrics">
+          <div>
+            <strong>2FA</strong>
+            <span>Ready</span>
+          </div>
+          <div>
+            <strong>Audit</strong>
+            <span>Enabled</span>
+          </div>
+          <div>
+            <strong>Cloud</strong>
+            <span>Synced</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="card auth-panel login-panel">
+      <div class="panel-glow"></div>
+
+      <!-- Tab Navigation (Top) -->
+      <div class="form-tabs" *ngIf="!pending2FA">
+        <button
+          type="button"
+          class="tab-button"
+          [class.active]="activeForm === 'login'"
+          (click)="switchForm('login')"
+        >
+          Connexion
+        </button>
+        <button
+          type="button"
+          class="tab-button"
+          [class.active]="activeForm === 'register'"
+          (click)="switchForm('register')"
+        >
+          Créer un compte
+        </button>
+        <span class="tab-underline" [style.left.%]="activeForm === 'login' ? 0 : 50"></span>
+      </div>
+
+      <!-- Login Form -->
+      <ng-container *ngIf="activeForm === 'login'">
+        <div class="auth-header">
+          <div class="auth-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 2l6 3v5c0 4.97-3.09 9.29-6 10-2.91-.71-6-5.03-6-10V5l6-3z"></path>
+              <path d="M9.5 12.5l1.9 1.9 3.8-4"></path>
+            </svg>
+          </div>
+          <p class="eyebrow">Connexion</p>
+          <h2>Heureux de vous revoir.</h2>
+          <p class="helper">Connectez-vous pour continuer vers votre espace de travail sécurisé.</p>
+        </div>
+
+        <form [formGroup]="pending2FA ? otpForm : form" (ngSubmit)="pending2FA ? submitOtp() : submit()" class="auth-form" novalidate>
+          <ng-container *ngIf="!pending2FA">
+            <div class="form-group">
+              <label class="form-label" for="login-email">Email professionnel</label>
+              <div class="input-shell" [attr.data-state]="getInputState(emailControl)">
+                <span class="input-icon email"></span>
+                <input
+                  id="login-email"
+                  type="email"
+                  formControlName="email"
+                  class="form-input"
+                  placeholder="votre.email@entreprise.com"
+                  autocomplete="email"
+                  inputmode="email"
+                >
+              </div>
+              <div class="field-note" *ngIf="emailControl?.valid && (emailControl?.dirty || emailControl?.touched)">Format email valide.</div>
+              <div class="form-error" *ngIf="emailControl?.invalid && (emailControl?.touched || emailControl?.dirty)">
+                Veuillez saisir un email valide.
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="login-password">Mot de passe</label>
+              <div class="input-shell password-shell" [attr.data-state]="getInputState(passwordControl)">
+                <span class="input-icon password"></span>
+                <input
+                  id="login-password"
+                  [type]="showPassword ? 'text' : 'password'"
+                  formControlName="password"
+                  class="form-input"
+                  placeholder="Votre mot de passe"
+                  autocomplete="current-password"
+                >
+                <button
+                  type="button"
+                  class="password-toggle"
+                  (click)="togglePasswordVisibility()"
+                  [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                >
+                  <span>{{ showPassword ? 'Masquer' : 'Afficher' }}</span>
+                </button>
+              </div>
+              <div class="field-note" *ngIf="passwordControl?.valid && (passwordControl?.dirty || passwordControl?.touched)">Mot de passe saisi.</div>
+              <div class="form-error" *ngIf="passwordControl?.invalid && (passwordControl?.touched || passwordControl?.dirty)">
+                Le mot de passe est requis.
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="remember-me">
+                <input type="checkbox" formControlName="rememberMe">
+                <span></span>
+                <span>Rester connecté</span>
+              </label>
+
+              <button type="button" class="forgot-link" (click)="recoveredEmailHint = emailControl?.value || recoveredEmailHint">
+                Mot de passe oublié ?
+              </button>
+            </div>
+
+            <div class="recovery-banner" *ngIf="recoveredEmailHint">
+              <strong>Astuce sécurité</strong>
+              <p>Si vous avez un doute, vérifiez votre boîte mail ou passez par la vérification de compte avec {{ recoveredEmailHint }}.</p>
+              <div class="recovery-actions">
+                <a routerLink="/verify" class="recovery-link">Vérifier mon email</a>
+                <button type="button" class="recovery-link subtle" (click)="recoveredEmailHint = ''">Masquer</button>
+              </div>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="pending2FA">
+            <div class="otp-panel">
+              <div class="otp-badge">2FA</div>
+              <h3>Validation à deux facteurs</h3>
+              <p>
+                Un code OTP a été envoyé pour <strong>{{ pendingEmail }}</strong>.
+                Saisissez-le pour finaliser la connexion.
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="login-otp">Code OTP</label>
+              <div class="input-shell" [attr.data-state]="getInputState(otpControl)">
+                <span class="input-icon otp"></span>
+                <input
+                  id="login-otp"
+                  type="text"
+                  formControlName="otp"
+                  class="form-input otp-input"
+                  placeholder="000000"
+                  maxlength="6"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                >
+              </div>
+              <div class="field-note" *ngIf="otpControl?.valid && (otpControl?.dirty || otpControl?.touched)">Code prêt à être validé.</div>
+              <div class="form-error" *ngIf="otpControl?.invalid && (otpControl?.touched || otpControl?.dirty)">
+                Le code OTP doit contenir 6 chiffres.
+              </div>
+            </div>
+          </ng-container>
+
+          <div class="form-messages" aria-live="polite" aria-atomic="true">
+            <p class="error" *ngIf="error">{{ error }}</p>
+          </div>
+
+          <button class="btn btn-primary btn-full submit-button" type="submit" [disabled]="loading">
+            <span class="button-loader" *ngIf="loading" aria-hidden="true"></span>
+            <span *ngIf="!loading && !pending2FA">Se connecter</span>
+            <span *ngIf="!loading && pending2FA">Valider le code OTP</span>
+            <span *ngIf="loading && !pending2FA">Connexion en cours...</span>
+            <span *ngIf="loading && pending2FA">Validation en cours...</span>
+          </button>
+
+          <div class="social-login" *ngIf="!pending2FA">
+            <div class="social-label">Connexion rapide</div>
+            <div class="social-grid">
+              <button type="button" class="social-button" disabled>
+                <span class="social-dot google"></span>
+                Google
+              </button>
+              <button type="button" class="social-button" disabled>
+                <span class="social-dot microsoft"></span>
+                Microsoft
+              </button>
+              <button type="button" class="social-button" disabled>
+                <span class="social-dot apple"></span>
+                Apple
+              </button>
+            </div>
+            <p class="social-note">Interface prête pour une intégration SSO ultérieure.</p>
+          </div>
+
+          <div class="auth-footer" *ngIf="!pending2FA">
+            <p>Pas encore de compte ? <button type="button" class="auth-link btn btn-text" (click)="switchForm('register')">Créer un compte</button></p>
+            <p><a routerLink="/verify" class="auth-link">Vérifier mon email</a></p>
+          </div>
+
+          <div class="auth-footer otp-footer" *ngIf="pending2FA">
+            <button type="button" class="auth-link btn btn-text" (click)="backToLogin()">Retour à la connexion</button>
+          </div>
+        </form>
+      </ng-container>
+
+      <!-- Registration Form -->
+      <ng-container *ngIf="activeForm === 'register'">
+        <div class="register-container">
+          <app-register (switchToVerify)="onSwitchToVerify($event)"></app-register>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- Email Verification Popup (for signin) -->
+  <app-unified-verification
+    [isOpen]="showEmailVerification"
+    mode="signin"
+    [email]="pendingVerificationEmail"
+    (close)="closeEmailVerificationPopup()"
+    (verified)="onEmailVerificationComplete($event)"
+  ></app-unified-verification>
+</section>

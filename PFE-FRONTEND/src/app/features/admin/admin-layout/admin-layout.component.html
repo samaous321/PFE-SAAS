@@ -1,0 +1,308 @@
+<div class="admin-layout">
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-active]="sidebarOpen">
+    <div class="sidebar-header">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <div class="logo-text" *ngIf="!sidebarCollapsed">
+          <span class="brand">SecureShare</span>
+          <span class="subtitle">Super Admin</span>
+        </div>
+        <button class="collapse-btn" (click)="toggleSidebar()" type="button" aria-label="Basculer la barre latérale">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.rotated]="sidebarCollapsed">
+            <polyline points="15,18 9,12 15,6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-groups">
+        <div class="nav-group">
+          <div class="nav-group-header">
+            <div class="group-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </div>
+            <span class="group-title" *ngIf="!sidebarCollapsed">Vue d'ensemble</span>
+          </div>
+          <ul class="nav-items expanded">
+            <li class="nav-item">
+              <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="12 3 20 7.5 20 16.5 12 21 4 16.5 4 7.5 12 3"></polyline>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Dashboard</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-header" (click)="toggleGroup('global')" [class.expanded]="expandedGroups['global']">
+            <div class="group-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </div>
+            <span class="group-title" *ngIf="!sidebarCollapsed">Gestion Globale</span>
+            <div class="group-toggle" *ngIf="!sidebarCollapsed">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.rotated]="expandedGroups['global']">
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <ul class="nav-items" [class.expanded]="expandedGroups['global']">
+            <li class="nav-item">
+              <a routerLink="/admin/tenants" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Organisations</span>
+                <span class="nav-badge" *ngIf="!sidebarCollapsed">12</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a routerLink="/admin/users" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Tous les Utilisateurs</span>
+                <span class="nav-badge" *ngIf="!sidebarCollapsed">248</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-header" (click)="toggleGroup('security')" [class.expanded]="expandedGroups['security']">
+            <div class="group-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <circle cx="12" cy="16" r="1"></circle>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <span class="group-title" *ngIf="!sidebarCollapsed">Sécurité & Conformité</span>
+            <div class="group-toggle" *ngIf="!sidebarCollapsed">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.rotated]="expandedGroups['security']">
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <ul class="nav-items" [class.expanded]="expandedGroups['security']">
+            <li class="nav-item">
+              <a routerLink="/admin/alerts" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8a6 6 0 1 0-12 0c0 3.8 2.9 6.9 6.7 7h.6c3.8-.1 6.7-3.2 6.7-7Z"></path>
+                    <path d="M13.7 21h-3.4a1.7 1.7 0 0 1-1.7-1.7V17h6.8v2.3A1.7 1.7 0 0 1 13.7 21Z"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Alertes Sécurité</span>
+                <span class="nav-badge danger" *ngIf="!sidebarCollapsed">3</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a routerLink="/admin/audit-logs" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12h6"></path>
+                    <path d="M9 16h6"></path>
+                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.49 0 4.75.99 6.4 2.6"></path>
+                    <path d="M21 3v6h-6"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Audit & Logs</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a routerLink="/admin/quotas" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20"></path>
+                    <path d="M4 6h16"></path>
+                    <path d="M4 18h16"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Quotas & Limites</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-header" (click)="toggleGroup('analytics')" [class.expanded]="expandedGroups['analytics']">
+            <div class="group-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <span class="group-title" *ngIf="!sidebarCollapsed">Analyses & Rapports</span>
+            <div class="group-toggle" *ngIf="!sidebarCollapsed">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.rotated]="expandedGroups['analytics']">
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <ul class="nav-items" [class.expanded]="expandedGroups['analytics']">
+            <li class="nav-item">
+              <a routerLink="/admin/analytics" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Statistiques Globales</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a routerLink="/admin/share-history" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Historique Partages</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-header" (click)="toggleGroup('support')" [class.expanded]="expandedGroups['support']">
+            <div class="group-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <path d="M9 9h6"></path>
+                <path d="M9 13h6"></path>
+              </svg>
+            </div>
+            <span class="group-title" *ngIf="!sidebarCollapsed">Support & Communication</span>
+            <div class="group-toggle" *ngIf="!sidebarCollapsed">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.rotated]="expandedGroups['support']">
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <ul class="nav-items" [class.expanded]="expandedGroups['support']">
+            <li class="nav-item">
+              <a routerLink="/admin/complaints" routerLinkActive="active" class="nav-link">
+                <div class="nav-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12h6"></path>
+                    <path d="M9 16h6"></path>
+                    <path d="M12 3l9 4.5v9L12 21l-9-4.5v-9L12 3z"></path>
+                  </svg>
+                </div>
+                <span class="nav-label" *ngIf="!sidebarCollapsed">Réclamations</span>
+                <span class="nav-badge warning" *ngIf="!sidebarCollapsed">7</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-section">
+        <div class="user-avatar"><span>{{ getInitials() }}</span></div>
+        <div class="user-info" *ngIf="!sidebarCollapsed">
+          <div class="user-name">{{ authStorage.getSession()?.email }}</div>
+          <div class="user-role">Super Administrateur</div>
+        </div>
+      </div>
+      <div class="footer-actions" *ngIf="!sidebarCollapsed">
+        <button class="action-btn" routerLink="/admin/profile" routerLinkActive="active" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </button>
+        <button class="action-btn" routerLink="/admin/settings" routerLinkActive="active" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <button class="logout-btn" (click)="logout()" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16,17 21,12 16,7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" [class.active]="sidebarOpen" (click)="closeSidebar()"></div>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <div class="header-content">
+        <div class="header-left">
+          <button class="sidebar-toggle" (click)="toggleMobileSidebar()" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="breadcrumb">
+            <span class="breadcrumb-item">SecureShare</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-item active">Super Admin</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="header-notifications">
+            <app-notification-center
+              variant="admin"
+              [open]="notificationsOpen"
+              (openChange)="onNotificationsOpenChange($event)"
+            ></app-notification-center>
+          </div>
+          <div class="user-menu">
+            <div class="dropdown">
+              <button type="button" class="dropdown-trigger" (click)="toggleMenu()">
+                <div class="user-avatar"><span>{{ getInitials() }}</span></div>
+              </button>
+              <ul class="dropdown-menu" [class.active]="menuOpen">
+                <li><a routerLink="/admin/profile" (click)="closeMenu()">Profil</a></li>
+                <li><a routerLink="/admin/settings" (click)="closeMenu()">Paramètres</a></li>
+                <li><button type="button" (click)="logout()" class="danger">Déconnexion</button></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="admin-page">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

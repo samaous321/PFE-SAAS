@@ -1,0 +1,305 @@
+<div class="audit-logs-container">
+  <header class="audit-header">
+    <div class="header-content">
+      <h1>🔍 Audit & Logs</h1>
+      <p>Surveillance complète des activités système - Tous les événements sont tracés et audités</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="export-btn" (click)="exportToCSV()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7,10 12,15 17,10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Exporter CSV
+      </button>
+    </div>
+  </header>
+
+  <!-- Filtres -->
+  <section class="filters-section">
+    <div class="filters-header">
+      <h3>Filtres de recherche</h3>
+      <div class="filter-actions">
+        <button type="button" class="toggle-filters-btn" (click)="toggleFilters()">
+          <span>{{ filtersExpanded ? '🔽' : '▶️' }}</span>
+          {{ filtersExpanded ? 'Masquer les filtres' : 'Afficher les filtres' }}
+        </button>
+        <button type="button" class="reset-btn" (click)="resetFilters()">Réinitialiser</button>
+      </div>
+    </div>
+
+    <div *ngIf="filtersExpanded">
+      <form [formGroup]="filterForm" class="filters-grid">
+      <div class="filter-group">
+        <label>Tenant</label>
+        <select class="audit-select" formControlName="tenantId">
+          <option value="">Tous les tenants</option>
+          <option *ngFor="let tenant of tenants" [value]="tenant._id">
+            {{ tenant.name }}
+          </option>
+        </select>
+        <div *ngIf="loadingTenants" class="loading-indicator">Chargement...</div>
+      </div>
+
+      <div class="filter-group">
+        <label>Utilisateur</label>
+        <select class="audit-select" formControlName="userId" [disabled]="!filterForm.get('tenantId')?.value">
+          <option value="">Tous les utilisateurs</option>
+          <option *ngFor="let user of users" [value]="user._id">
+            {{ user.email }}
+          </option>
+        </select>
+        <div *ngIf="loadingUsers" class="loading-indicator">Chargement...</div>
+      </div>
+
+      <div class="filter-group">
+        <label>Action</label>
+        <select class="audit-select" formControlName="action">
+          <option value="">Toutes les actions</option>
+          <option value="created">Partage créé</option>
+          <option value="revoked">Partage révoqué</option>
+          <option value="accessed_download">Téléchargement</option>
+          <option value="accessed_view">Consultation</option>
+          <option value="settings_updated">Paramètres modifiés</option>
+          <option value="file_settings_updated">Fichier mis à jour</option>
+          <option value="file_deleted">Fichier supprimé</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Nom du fichier</label>
+        <input class="audit-input" type="text" formControlName="fileName" placeholder="Rechercher par nom...">
+      </div>
+
+      <div class="filter-group">
+        <label>Destinataire</label>
+        <input class="audit-input" type="text" formControlName="recipientEmail" placeholder="Email destinataire...">
+      </div>
+
+      <div class="filter-group">
+        <label>Adresse IP</label>
+        <input class="audit-input" type="text" formControlName="ipAddress" placeholder="192.168.1.1...">
+      </div>
+
+      <div class="filter-group">
+        <label>Navigateur</label>
+        <input class="audit-input" type="text" formControlName="userAgent" placeholder="Mozilla, Chrome...">
+      </div>
+
+      <div class="filter-group">
+        <label>Date début</label>
+        <input class="audit-input" type="date" formControlName="startDate">
+      </div>
+
+      <div class="filter-group">
+        <label>Date fin</label>
+        <input class="audit-input" type="date" formControlName="endDate">
+      </div>
+    </form>
+    </div>
+  </section>
+
+  <!-- Résultats -->
+  <section class="results-section">
+    <div class="results-header">
+      <h3>Logs d'audit</h3>
+      <div class="results-info">
+        <span>{{ totalItems }} résultat(s) • Page {{ currentPage }} / {{ totalPages }}</span>
+      </div>
+    </div>
+
+    <div class="audit-table-container" *ngIf="!loading; else loadingState">
+      <table class="audit-table" *ngIf="auditLogs.length; else noResults">
+        <thead>
+          <tr>
+            <th>Date & Heure</th>
+            <th>Action</th>
+            <th>Tenant</th>
+            <th>Utilisateur</th>
+            <th>Fichier</th>
+            <th>Destinataire</th>
+            <th>IP & Navigateur</th>
+            <th>Détails</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of auditLogs; let i = index" [class.even]="i % 2 === 0">
+            <td class="timestamp-cell" data-label="Date & Heure">
+              <div class="timestamp">
+                <strong>{{ formatDate(log.timestamp).split(' ')[0] }}</strong>
+                <small>{{ formatDate(log.timestamp).split(' ')[1] }}</small>
+              </div>
+            </td>
+            <td class="action-cell" data-label="Action">
+              <div class="action-badge">
+                <span class="action-icon">{{ log.icon }}</span>
+                <span class="action-label">{{ log.actionLabel }}</span>
+              </div>
+            </td>
+            <td class="tenant-cell" data-label="Tenant">
+              <span class="tenant-tag">{{ log.tenantName }}</span>
+            </td>
+            <td class="user-cell" data-label="Utilisateur">
+              <span class="user-email">{{ log.userEmail }}</span>
+            </td>
+            <td class="file-cell" data-label="Fichier">
+              <div *ngIf="log.fileName; else noFile" class="file-info">
+                <span class="file-icon">{{ getFileIcon(log.mimeType) }}</span>
+                <div class="file-details">
+                  <strong>{{ log.fileName }}</strong>
+                  <small *ngIf="log.fileSize">{{ formatFileSize(log.fileSize) }}</small>
+                </div>
+              </div>
+              <ng-template #noFile>
+                <span class="no-data">-</span>
+              </ng-template>
+            </td>
+            <td class="recipient-cell" data-label="Destinataire">
+              <span *ngIf="log.recipientEmail; else noRecipient" class="recipient-email">
+                {{ log.recipientEmail }}
+              </span>
+              <ng-template #noRecipient>
+                <span class="no-data">-</span>
+              </ng-template>
+            </td>
+            <td class="tech-cell" data-label="IP & Navigateur">
+              <div class="tech-info">
+                <div *ngIf="log.ipAddress" class="ip-address">
+                  <strong>IP:</strong> {{ log.ipAddress }}
+                </div>
+                <div *ngIf="log.userAgent" class="user-agent">
+                  <strong>Browser:</strong> {{ log.userAgent | slice:0:30 }}...
+                </div>
+                <span *ngIf="!log.ipAddress && !log.userAgent" class="no-data">-</span>
+              </div>
+            </td>
+            <td class="details-cell" data-label="Détails">
+              <button type="button" class="details-btn" (click)="showDetails(log)">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m16.24-3.76l-4.24 4.24m-6-6L2.76 6.24m16.24 11.52l-4.24-4.24m-6 6L2.76 17.76"/>
+                </svg>
+                Détails
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ng-template #noResults>
+        <div class="no-results">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <h4>Aucun log d'audit trouvé</h4>
+          <p>Ajustez vos filtres pour voir plus de résultats.</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <ng-template #loadingState>
+      <div class="loading-container">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Chargement des logs d'audit...</p>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Pagination -->
+    <div class="pagination-container" *ngIf="totalPages > 1">
+      <div class="pagination-info">
+        Affichage de {{ (currentPage - 1) * pageSize + 1 }} à {{ Math.min(currentPage * pageSize, totalItems) }} sur {{ totalItems }} résultats
+      </div>
+      <div class="pagination-controls">
+        <button
+          type="button"
+          class="pagination-btn prev"
+          (click)="onPageChange(currentPage - 1)"
+          [disabled]="currentPage <= 1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15,18 9,12 15,6"></polyline>
+          </svg>
+          Précédent
+        </button>
+
+        <div class="pagination-pages">
+          <button
+            *ngFor="let page of [].constructor(totalPages); let i = index"
+            type="button"
+            class="pagination-page"
+            [class.active]="i + 1 === currentPage"
+            (click)="onPageChange(i + 1)">
+            {{ i + 1 }}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="pagination-btn next"
+          (click)="onPageChange(currentPage + 1)"
+          [disabled]="currentPage >= totalPages">
+          Suivant
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9,18 15,12 9,6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal de détails -->
+  <div class="modal-backdrop" *ngIf="selectedLog" (click)="closeDetailsModal()">
+    <div class="audit-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Détails du log d'audit</h2>
+        <button type="button" class="close-btn" (click)="closeDetailsModal()">✕</button>
+      </div>
+
+      <div class="modal-content" *ngIf="selectedLog">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Timestamp</label>
+            <strong>{{ formatDate(selectedLog.timestamp) }}</strong>
+          </div>
+          <div class="detail-item">
+            <label>Action</label>
+            <strong>{{ selectedLog.actionLabel }}</strong>
+          </div>
+          <div class="detail-item">
+            <label>Tenant</label>
+            <strong>{{ selectedLog.tenantName }}</strong>
+          </div>
+          <div class="detail-item">
+            <label>Utilisateur</label>
+            <strong>{{ selectedLog.userEmail }}</strong>
+          </div>
+          <div class="detail-item" *ngIf="selectedLog.fileName">
+            <label>Fichier</label>
+            <strong>{{ selectedLog.fileName }}</strong>
+          </div>
+          <div class="detail-item" *ngIf="selectedLog.recipientEmail">
+            <label>Destinataire</label>
+            <strong>{{ selectedLog.recipientEmail }}</strong>
+          </div>
+          <div class="detail-item" *ngIf="selectedLog.ipAddress">
+            <label>Adresse IP</label>
+            <strong>{{ selectedLog.ipAddress }}</strong>
+          </div>
+          <div class="detail-item" *ngIf="selectedLog.userAgent">
+            <label>Navigateur</label>
+            <strong>{{ selectedLog.userAgent }}</strong>
+          </div>
+        </div>
+
+        <div class="details-json" *ngIf="selectedLog.details && Object.keys(selectedLog.details).length > 0">
+          <h4>Détails techniques</h4>
+          <pre>{{ selectedLog.details | json }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

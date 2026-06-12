@@ -1,0 +1,460 @@
+<div class="admin-share-history-container">
+  <!-- Header -->
+  <div class="history-header">
+    <div class="header-content">
+      <h1>🛡️ Supervision des Partages</h1>
+      <p class="subtitle">Supervision complète de tous les partages de fichiers du système</p>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="filters-section">
+    <div class="filters-header">
+      <h3>🔍 Filtrer et Rechercher</h3>
+      <button class="btn btn-primary" (click)="exportToCSV()" title="Exporter en CSV">
+        📊 Exporter CSV
+      </button>
+    </div>
+
+    <form [formGroup]="filterForm" class="filters-form">
+      <!-- ID Tenant -->
+      <div class="filter-group">
+        <label for="tenantId">Tenant ID</label>
+        <input
+          id="tenantId"
+          type="text"
+          class="form-control"
+          placeholder="ID du tenant"
+          formControlName="tenantId"
+        />
+      </div>
+
+      <!-- ID Utilisateur -->
+      <div class="filter-group">
+        <label for="userId">ID Utilisateur</label>
+        <input
+          id="userId"
+          type="text"
+          class="form-control"
+          placeholder="ID de l'utilisateur"
+          formControlName="userId"
+        />
+      </div>
+
+      <!-- Email destinataire -->
+      <div class="filter-group">
+        <label for="recipientEmail">Email destinataire</label>
+        <input
+          id="recipientEmail"
+          type="email"
+          class="form-control"
+          placeholder="destinataire@example.com"
+          formControlName="recipientEmail"
+        />
+      </div>
+
+      <!-- Statut -->
+      <div class="filter-group">
+        <label for="status">Statut</label>
+        <select id="status" formControlName="status" class="form-control">
+          <option value="">Tous</option>
+          <option *ngFor="let status of statuses" [value]="status">
+            {{ status | uppercase }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Type -->
+      <div class="filter-group">
+        <label for="shareType">Type</label>
+        <select id="shareType" formControlName="shareType" class="form-control">
+          <option value="">Tous</option>
+          <option *ngFor="let type of shareTypes" [value]="type">
+            {{ type | uppercase }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Date début -->
+      <div class="filter-group">
+        <label for="startDate">De</label>
+        <input
+          id="startDate"
+          type="date"
+          class="form-control"
+          formControlName="startDate"
+        />
+      </div>
+
+      <!-- Date fin -->
+      <div class="filter-group">
+        <label for="endDate">À</label>
+        <input
+          id="endDate"
+          type="date"
+          class="form-control"
+          formControlName="endDate"
+        />
+      </div>
+
+      <!-- Bouton réinitialiser -->
+      <div class="filter-group">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="resetFilters()"
+        >
+          🔄 Réinitialiser
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Contenu -->
+  <div class="content-section">
+    <!-- Info résumé -->
+    <div class="summary-bar">
+      <span class="summary-item">
+        📊 Total: <strong>{{ totalItems }}</strong> partage(s)
+      </span>
+      <span class="summary-item">
+        📄 Page: <strong>{{ currentPage }}/{{ totalPages }}</strong>
+      </span>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Chargement en cours...</p>
+    </div>
+
+    <!-- Tableau -->
+    <div *ngIf="!loading && shareHistories.length > 0" class="table-wrapper">
+      <table class="shares-table">
+        <thead>
+          <tr>
+            <th>Fichier</th>
+            <th>Partagé par</th>
+            <th>Destinataire</th>
+            <th>Type</th>
+            <th>Accès</th>
+            <th>Statut</th>
+            <th>📥 DL</th>
+            <th>👁️ Vues</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let share of shareHistories" class="share-row">
+            <td class="file-cell">
+              <span class="file-icon">{{ getFileIcon(share.mimeType) }}</span>
+              <div class="file-info">
+                <div class="file-name">{{ share.fileName }}</div>
+                <div class="file-size">{{ formatFileSize(share.fileSize) }}</div>
+              </div>
+            </td>
+            <td class="user-cell">
+              <div class="user-email">{{ share.sharedBy.email || '-' }}</div>
+              <div class="user-tenant" *ngIf="share.sharedBy.tenantId">
+                ID: {{ share.sharedBy.tenantId | slice:0:8 }}...
+              </div>
+            </td>
+            <td class="recipient-cell">
+              <div class="user-email">{{ share.sharedWith.email || '-' }}</div>
+              <span *ngIf="share.sharedWith.externalUser" class="badge badge-external">
+                Externe
+              </span>
+            </td>
+            <td class="type-cell">
+              <span class="badge" [ngClass]="{
+                'badge-primary': share.shareType === 'direct',
+                'badge-info': share.shareType === 'link',
+                'badge-warning': share.shareType === 'public'
+              }">
+                {{ share.shareType | uppercase }}
+              </span>
+            </td>
+            <td class="access-cell">
+              <span class="access-badge">
+                {{ getAccessLevelIcon(share.accessLevel) }}
+                {{ share.accessLevel | uppercase }}
+              </span>
+            </td>
+            <td class="status-cell">
+              <span class="badge" [ngClass]="getStatusBadgeClass(share.status)">
+                {{ share.status | uppercase }}
+              </span>
+            </td>
+            <td class="count-cell">
+              <strong>{{ share.downloadCount }}</strong>
+            </td>
+            <td class="count-cell">
+              <strong>{{ share.viewCount }}</strong>
+            </td>
+            <td class="date-cell">
+              {{ formatDate(share.createdAt) }}
+            </td>
+            <td class="actions-cell">
+              <button
+                class="btn-icon btn-info"
+                title="Détails"
+                (click)="viewDetails(share)"
+              >
+                👁️ Voir
+              </button>
+              <button
+                class="btn-icon btn-danger"
+                title="Révoquer"
+                *ngIf="share.status === 'active'"
+                (click)="openRevokeModal(share)"
+              >
+                🚫 Révoquer
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Message vide -->
+    <div *ngIf="!loading && shareHistories.length === 0" class="empty-state">
+      <div class="empty-icon">📭</div>
+      <h3>Aucun partage trouvé</h3>
+      <p>Essayez de modifier les filtres pour afficher d'autres partages.</p>
+    </div>
+
+    <!-- Pagination -->
+    <div *ngIf="!loading && shareHistories.length > 0 && totalPages > 1" class="pagination-wrapper">
+      <div class="pagination-controls">
+        <button 
+          [disabled]="currentPage === 1" 
+          (click)="onPageChange(currentPage - 1)"
+          class="btn btn-sm btn-secondary"
+        >
+          ← Précédent
+        </button>
+        <span class="pagination-info">Page {{ currentPage }} / {{ totalPages }}</span>
+        <button 
+          [disabled]="currentPage === totalPages" 
+          (click)="onPageChange(currentPage + 1)"
+          class="btn btn-sm btn-secondary"
+        >
+          Suivant →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Détails -->
+  <div *ngIf="showDetailsModal && selectedShare" class="modal-overlay" (click)="closeDetailsModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ getFileIcon(selectedShare.mimeType) }} Détails du Partage</h2>
+        <button class="btn-close" (click)="closeDetailsModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Infos fichier -->
+        <div class="detail-section">
+          <h4>📄 Infos Fichier</h4>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="label">Nom:</span>
+              <span class="value">{{ selectedShare.fileName }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Taille:</span>
+              <span class="value">{{ formatFileSize(selectedShare.fileSize) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">MIME Type:</span>
+              <span class="value">{{ selectedShare.mimeType }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Hash:</span>
+              <span class="value font-mono">{{ selectedShare.fileHash }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Partagé par -->
+        <div class="detail-section">
+          <h4>👤 Partagé par</h4>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="label">Email:</span>
+              <span class="value">{{ selectedShare.sharedBy.email }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Tenant ID:</span>
+              <span class="value font-mono">{{ selectedShare.sharedBy.tenantId }}</span>
+            </div>
+            <div *ngIf="selectedShare.sharedBy.ipAddress" class="detail-row">
+              <span class="label">IP:</span>
+              <span class="value">{{ selectedShare.sharedBy.ipAddress }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Destinataire -->
+        <div class="detail-section">
+          <h4>📨 Destinataire</h4>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="label">Email:</span>
+              <span class="value">{{ selectedShare.sharedWith.email }}</span>
+            </div>
+            <div *ngIf="selectedShare.sharedWith.externalUser" class="detail-row">
+              <span class="label">Type:</span>
+              <span class="badge badge-warning">Utilisateur Externe</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Infos partage -->
+        <div class="detail-section">
+          <h4>🔗 Infos Partage</h4>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="label">Type:</span>
+              <span class="badge" [ngClass]="{
+                'badge-primary': selectedShare.shareType === 'direct',
+                'badge-info': selectedShare.shareType === 'link',
+                'badge-warning': selectedShare.shareType === 'public'
+              }">
+                {{ selectedShare.shareType | uppercase }}
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Accès:</span>
+              <span class="access-badge">
+                {{ getAccessLevelIcon(selectedShare.accessLevel) }}
+                {{ selectedShare.accessLevel | uppercase }}
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Statut:</span>
+              <span class="badge" [ngClass]="getStatusBadgeClass(selectedShare.status)">
+                {{ selectedShare.status | uppercase }}
+              </span>
+            </div>
+            <div *ngIf="selectedShare.expiresAt" class="detail-row">
+              <span class="label">Expire:</span>
+              <span class="value">{{ formatDate(selectedShare.expiresAt) }}</span>
+            </div>
+            <div *ngIf="selectedShare.maxDownloads" class="detail-row">
+              <span class="label">Max DL:</span>
+              <span class="value">{{ selectedShare.downloadCount }}/{{ selectedShare.maxDownloads }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="detail-section">
+          <h4>📊 Statistiques d'Accès</h4>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="label">Téléchargements:</span>
+              <span class="value"><strong>{{ selectedShare.downloadCount }}</strong></span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Consultations:</span>
+              <span class="value"><strong>{{ selectedShare.viewCount }}</strong></span>
+            </div>
+            <div *ngIf="selectedShare.firstAccessedAt" class="detail-row">
+              <span class="label">Premier accès:</span>
+              <span class="value">{{ formatDate(selectedShare.firstAccessedAt) }}</span>
+            </div>
+            <div *ngIf="selectedShare.lastAccessedAt" class="detail-row">
+              <span class="label">Dernier accès:</span>
+              <span class="value">{{ formatDate(selectedShare.lastAccessedAt) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit Trail -->
+        <div *ngIf="selectedShare.auditTrail && selectedShare.auditTrail.length > 0" class="detail-section">
+          <h4>📝 Audit Trail ({{ selectedShare.auditTrail.length }} événements)</h4>
+          <div class="audit-trail">
+            <div *ngFor="let entry of selectedShare.auditTrail" class="audit-entry">
+              <span class="audit-action">{{ entry.action | uppercase }}</span>
+              <span class="audit-time">{{ formatDate(entry.timestamp) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Revocation Info -->
+        <div *ngIf="selectedShare.status === 'revoked' && selectedShare.revokeReason" class="detail-section warning">
+          <h4>⚠️ Revocation</h4>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="label">Révoqué le:</span>
+              <span class="value">{{ formatDate(selectedShare.revokedAt || '') }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Raison:</span>
+              <span class="value">{{ selectedShare.revokeReason }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
+        <button
+          *ngIf="selectedShare.status === 'active'"
+          class="btn btn-danger"
+          (click)="closeDetailsModal(); openRevokeModal(selectedShare)"
+        >
+          🚫 Révoquer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Revoke -->
+  <div *ngIf="showRevokeModal && selectedShare" class="modal-overlay" (click)="closeRevokeModal()">
+    <div class="modal-content modal-small" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🚫 Révoquer le Partage</h2>
+        <button class="btn-close" (click)="closeRevokeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="warning-box">
+          <div class="warning-icon">⚠️</div>
+          <p>Vous êtes sur le point de révoquer le partage du fichier:</p>
+          <p class="file-name"><strong>{{ selectedShare.fileName }}</strong></p>
+          <p>Cette action est irréversible et empêchera l'accès au partage.</p>
+        </div>
+
+        <form [formGroup]="revokeForm">
+          <div class="form-group">
+            <label for="reason">Raison de la révocation *</label>
+            <textarea
+              id="reason"
+              class="form-control"
+              placeholder="Ex: Accès non autorisé, Demande de l'utilisateur..."
+              formControlName="reason"
+              rows="4"
+              required
+            ></textarea>
+            <small class="text-muted">Cette raison sera enregistrée dans l'audit trail</small>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeRevokeModal()">Annuler</button>
+        <button
+          class="btn btn-danger"
+          (click)="revokeShare()"
+          [disabled]="!revokeForm.valid"
+        >
+          ✓ Révoquer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

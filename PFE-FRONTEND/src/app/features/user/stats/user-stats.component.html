@@ -1,0 +1,450 @@
+<div class="stats-dashboard">
+  <div class="dashboard-hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Analytics / User sector</p>
+      <h1>Tableau de bord statistique</h1>
+      <p class="hero-text">Vue réelle des fichiers, du quota, du tenant et des activités. Les sections se replient pour garder une lecture nette.</p>
+      <div class="hero-pills">
+        <span class="pill pill-primary">{{ statsData?.tenantOverview?.name || 'Tenant' }}</span>
+        <span class="pill">Plan {{ statsData?.quota?.plan || statsData?.tenantOverview?.plan || 'small' }}</span>
+        <span class="pill">{{ formatPercent(quotaPercent) }} quota utilisateur</span>
+        <span class="pill">{{ formatPercent(tenantQuotaPercent) }} quota tenant</span>
+      </div>
+
+      <div class="top-filters">
+        <form [formGroup]="filtersForm" class="filters-inline" (ngSubmit)="applyFilters()">
+          <div class="segmented">
+            <button type="button" class="seg-btn" [class.active]="filtersForm.value.timeRange==='week'" (click)="filtersForm.patchValue({timeRange:'week'})">Semaine</button>
+            <button type="button" class="seg-btn" [class.active]="filtersForm.value.timeRange==='month'" (click)="filtersForm.patchValue({timeRange:'month'})">Mois</button>
+            <button type="button" class="seg-btn" [class.active]="filtersForm.value.timeRange==='year'" (click)="filtersForm.patchValue({timeRange:'year'})">Année</button>
+          </div>
+          <input type="text" formControlName="fileType" placeholder="Type (image,pdf...)" class="filter-input" />
+          <input type="text" formControlName="userId" placeholder="Utilisateur (optionnel)" class="filter-input" />
+          <button type="button" class="btn btn-primary" (click)="applyFilters()">Appliquer</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="hero-side">
+      <div class="hero-metric">
+        <span class="metric-label">Fichiers</span>
+        <strong>{{ statsData?.fileManagement?.uploads ?? 0 }}</strong>
+      </div>
+      <div class="hero-metric">
+        <span class="metric-label">Partages</span>
+        <strong>{{ statsData?.sharing?.filesShared ?? 0 }}</strong>
+      </div>
+      <div class="hero-metric">
+        <span class="metric-label">Utilisateurs tenant</span>
+        <strong>{{ statsData?.tenantOverview?.usersCount ?? 0 }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <section class="filters-panel">
+    <form [formGroup]="filtersForm" class="filters-form">
+      <div class="filters-grid">
+        <div class="filter-group filter-group-wide">
+          <label>Date range</label>
+          <div class="date-inputs">
+            <input type="date" formControlName="startDate" />
+            <span>to</span>
+            <input type="date" formControlName="endDate" />
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>File type</label>
+          <input type="text" formControlName="fileType" placeholder="image, pdf, doc" />
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select formControlName="status">
+            <option value="">All status</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="btn btn-secondary" (click)="resetFilters()">Reset</button>
+          <button type="button" class="btn btn-primary" (click)="applyFilters()">Apply</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="dashboard-toolbar" *ngIf="statsData && !isLoading">
+    <div class="tabs-bar">
+      <nav class="tabs">
+        <button *ngFor="let t of tabs" class="tab" [class.active]="currentTab===t.id" (click)="currentTab=t.id">{{ t.icon }} {{ t.label }}</button>
+      </nav>
+      <div class="toolbar-actions">
+        <button type="button" class="btn btn-secondary" (click)="toggleAllSections(true)" [disabled]="isAllExpanded">Tout afficher</button>
+        <button type="button" class="btn btn-secondary" (click)="toggleAllSections(false)" [disabled]="!isAllExpanded">Tout masquer</button>
+      </div>
+    </div>
+  </section>
+
+
+
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading statistics...</p>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && !statsData">
+    <h3>Aucune statistique disponible</h3>
+    <p>Recharge la page ou ajuste les filtres pour récupérer les données réelles du backend.</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading && statsData">
+    <section class="summary-grid compact">
+      <article class="summary-card summary-card-primary">
+        <span class="summary-label">Fichiers stockés</span>
+        <strong>{{ statsData.fileManagement.uploads }}</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Downloads</span>
+        <strong>{{ statsData.fileManagement.downloads }}</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Stockage utilisé</span>
+        <strong>{{ formatBytes(statsData.storage.totalUsed) }}</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Quota user</span>
+        <strong>{{ formatPercent(quotaPercent) }}</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Quota tenant</span>
+        <strong>{{ formatPercent(tenantQuotaPercent) }}</strong>
+      </article>
+    </section>
+
+    <section *ngIf="currentTab==='fileManagement'" class="cards-grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>Uploads vs Downloads</h3>
+          <button class="btn btn-sm btn-outline" (click)="toggleSection('fileManagement')">⚙</button>
+        </div>
+        <div class="chart-shell chart-shell--large">
+          <canvas baseChart [type]="'line'" [data]="fileManagementChartData" [options]="fileManagementChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>File types</h3><button class="btn btn-sm btn-outline" (click)="toggleSection('fileTypes')">👁</button></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'doughnut'" [data]="fileTypesChartData" [options]="fileTypesChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Shared files</h3><button class="btn btn-sm btn-outline" (click)="toggleSection('sharing')">👁</button></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'bar'" [data]="sharedFilesChartData" [options]="sharedFilesChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Storage evolution</h3><button class="btn btn-sm btn-outline" (click)="toggleSection('storage')">👁</button></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'line'" [data]="storageEvolutionChartData" [options]="storageEvolutionChartOptions"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-section" [class.collapsed]="!sections['fileTypes'].isExpanded">
+      <div class="section-header" role="button" tabindex="0" (click)="toggleSection('fileTypes')">
+        <div class="section-title">
+          <span class="section-icon">📊</span>
+          <div>
+            <h2>File Types</h2>
+            <p>Répartition réelle par MIME type</p>
+          </div>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-sm btn-outline" (click)="exportSection('fileTypes', $event)">Export</button>
+          <span class="section-toggle">{{ sections['fileTypes'].isExpanded ? 'Hide' : 'Show' }}</span>
+        </div>
+      </div>
+      <div class="section-content" [class.expanded]="sections['fileTypes'].isExpanded">
+        <div class="metrics-grid metrics-grid-3">
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.fileTypes.totalTypes }}</span>
+            <span class="metric-label">Types</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.fileTypes.distribution[0]?.type || 'n/a' }}</span>
+            <span class="metric-label">Top type</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.fileTypes.distribution[0]?.count ?? 0 }}</span>
+            <span class="metric-label">Top count</span>
+          </article>
+        </div>
+        <div class="section-grid section-grid-two">
+          <div class="chart-shell chart-shell--medium">
+            <canvas baseChart [type]="'doughnut'" [data]="fileTypesChartData" [options]="fileTypesChartOptions"></canvas>
+          </div>
+          <div class="detail-list">
+            <div class="detail-item" *ngFor="let type of statsData.fileTypes.distribution.slice(0, 6)">
+              <span class="detail-main">{{ type.type }}</span>
+              <span class="detail-sub">{{ type.count }} files</span>
+              <span class="detail-meta">{{ formatBytes(type.totalSize) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="currentTab==='security'" class="cards-grid">
+      <div class="card">
+        <div class="card-head"><h3>Scanned files</h3></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'doughnut'" [data]="securityChartData" [options]="securityChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Blocked / Quarantined</h3></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'bar'" [data]="securityChartData" [options]="securityChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Malware trends</h3></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'line'" [data]="activityChartData" [options]="activityChartOptions"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-section" [class.collapsed]="!sections['analysis'].isExpanded">
+      <div class="section-header" role="button" tabindex="0" (click)="toggleSection('analysis')">
+        <div class="section-title">
+          <span class="section-icon">🧠</span>
+          <div>
+            <h2>Analysis</h2>
+            <p>Succès, échecs et répartition des risques</p>
+          </div>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-sm btn-outline" (click)="exportSection('analysis', $event)">Export</button>
+          <span class="section-toggle">{{ sections['analysis'].isExpanded ? 'Hide' : 'Show' }}</span>
+        </div>
+      </div>
+      <div class="section-content" [class.expanded]="sections['analysis'].isExpanded">
+        <div class="metrics-grid metrics-grid-2">
+          <article class="progress-card">
+            <div class="progress-copy">
+              <span class="metric-label">Scan success</span>
+              <strong>{{ statsData.analysis.scanSuccess }}</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill progress-fill-success" [style.width.%]="getSuccessRate()"></div>
+            </div>
+          </article>
+          <article class="progress-card">
+            <div class="progress-copy">
+              <span class="metric-label">Scan failed</span>
+              <strong>{{ statsData.analysis.scanFailed }}</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill progress-fill-danger" [style.width.%]="getFailureRate()"></div>
+            </div>
+          </article>
+        </div>
+        <div class="analysis-grid">
+          <div class="analysis-note">
+            <span class="analysis-note-label">Total scanned</span>
+            <strong>{{ statsData.analysis.totalScanned }}</strong>
+          </div>
+          <div class="analysis-note">
+            <span class="analysis-note-label">Risk samples</span>
+            <strong>{{ statsData.analysis.riskScoreDistribution.length }}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-section" [class.collapsed]="!sections['sharing'].isExpanded">
+      <div class="section-header" role="button" tabindex="0" (click)="toggleSection('sharing')">
+        <div class="section-title">
+          <span class="section-icon">🔗</span>
+          <div>
+            <h2>Sharing</h2>
+            <p>Ce que tu partages et ce que tu reçois</p>
+          </div>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-sm btn-outline" (click)="exportSection('sharing', $event)">Export</button>
+          <span class="section-toggle">{{ sections['sharing'].isExpanded ? 'Hide' : 'Show' }}</span>
+        </div>
+      </div>
+      <div class="section-content" [class.expanded]="sections['sharing'].isExpanded">
+        <div class="metrics-grid metrics-grid-2">
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.sharing.filesShared }}</span>
+            <span class="metric-label">Files shared</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.sharing.filesReceived }}</span>
+            <span class="metric-label">Files received</span>
+          </article>
+        </div>
+        <div class="section-grid section-grid-two">
+          <div class="detail-list detail-list-stack">
+            <h3>Most shared files</h3>
+            <div class="detail-item" *ngFor="let file of statsData.sharing.mostSharedFiles.slice(0, 4)">
+              <span class="detail-main">{{ file.filename }}</span>
+              <span class="detail-sub">{{ file.shareCount }} shares</span>
+              <span class="detail-meta">{{ formatDate(file.lastShared) }}</span>
+            </div>
+          </div>
+          <div class="detail-list detail-list-stack">
+            <h3>Most viewed shared files</h3>
+            <div class="detail-item" *ngFor="let file of statsData.sharing.mostViewedSharedFiles.slice(0, 4)">
+              <span class="detail-main">{{ file.filename }}</span>
+              <span class="detail-sub">{{ file.viewCount }} views</span>
+              <span class="detail-meta">{{ formatDate(file.lastViewed) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-section" [class.collapsed]="!sections['storage'].isExpanded">
+      <div class="section-header" role="button" tabindex="0" (click)="toggleSection('storage')">
+        <div class="section-title">
+          <span class="section-icon">💾</span>
+          <div>
+            <h2>Storage</h2>
+            <p>Poids des fichiers et répartition par type</p>
+          </div>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-sm btn-outline" (click)="exportSection('storage', $event)">Export</button>
+          <span class="section-toggle">{{ sections['storage'].isExpanded ? 'Hide' : 'Show' }}</span>
+        </div>
+      </div>
+      <div class="section-content" [class.expanded]="sections['storage'].isExpanded">
+        <div class="metrics-grid metrics-grid-2">
+          <article class="metric-card">
+            <span class="metric-value">{{ formatBytes(statsData.storage.totalUsed) }}</span>
+            <span class="metric-label">Total used</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.storage.fileCount }}</span>
+            <span class="metric-label">Files count</span>
+          </article>
+        </div>
+        <div class="section-grid section-grid-two">
+          <div class="chart-shell chart-shell--medium">
+            <canvas baseChart [type]="'doughnut'" [data]="storageChartData" [options]="storageChartOptions"></canvas>
+          </div>
+          <div class="detail-list detail-list-stack">
+            <h3>Largest files</h3>
+            <div class="detail-item" *ngFor="let file of statsData.storage.largestFiles.slice(0, 6)">
+              <span class="detail-main">{{ file.originalName }}</span>
+              <span class="detail-sub">{{ formatBytes(file.size) }}</span>
+              <span class="detail-meta">{{ formatDate(file.createdAt) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-section" [class.collapsed]="!sections['tenantOverview'].isExpanded">
+      <div class="section-header" role="button" tabindex="0" (click)="toggleSection('tenantOverview')">
+        <div class="section-title">
+          <span class="section-icon">🏢</span>
+          <div>
+            <h2>Tenant Overview</h2>
+            <p>Statistiques du même tenant et comparaison globale</p>
+          </div>
+        </div>
+        <div class="section-actions">
+          <span class="section-toggle">{{ sections['tenantOverview'].isExpanded ? 'Hide' : 'Show' }}</span>
+        </div>
+      </div>
+      <div class="section-content" [class.expanded]="sections['tenantOverview'].isExpanded">
+        <div class="metrics-grid metrics-grid-3">
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.tenantOverview?.usersCount ?? 0 }}</span>
+            <span class="metric-label">Users</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.tenantOverview?.activeUsersCount ?? 0 }}</span>
+            <span class="metric-label">Active users</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-value">{{ statsData.tenantOverview?.filesCount ?? 0 }}</span>
+            <span class="metric-label">Tenant files</span>
+          </article>
+        </div>
+        <div class="section-grid section-grid-two">
+          <div class="detail-list detail-list-stack">
+            <div class="detail-item">
+              <span class="detail-main">Average files per user</span>
+              <span class="detail-sub">{{ formatDecimal(statsData.tenantOverview?.averageFilesPerUser ?? 0) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-main">Average storage per user</span>
+              <span class="detail-sub">{{ formatBytes(statsData.tenantOverview?.averageStoragePerUser ?? 0) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-main">Shared links</span>
+              <span class="detail-sub">{{ statsData.tenantOverview?.sharedLinksCount ?? 0 }}</span>
+            </div>
+          </div>
+          <div class="quota-block">
+            <span class="quota-title">Tenant storage usage</span>
+            <div class="progress-track progress-track-tenant">
+              <div class="progress-fill progress-fill-tenant" [style.width.%]="tenantQuotaPercent"></div>
+            </div>
+            <div class="quota-meta">
+              <span>{{ formatBytes(statsData.tenantOverview?.storageUsedBytes ?? 0) }}</span>
+              <span>{{ formatBytes(statsData.tenantOverview?.storageLimitBytes ?? 0) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="currentTab==='quota'" class="cards-grid">
+      <div class="card">
+        <div class="card-head"><h3>Storage usage</h3></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'doughnut'" [data]="quotaDonutData" [options]="quotaDonutOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Growth over time</h3></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'line'" [data]="storageEvolutionChartData" [options]="storageEvolutionChartOptions"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="currentTab==='activity'" class="cards-grid">
+      <div class="card">
+        <div class="card-head"><h3>User activity timeline</h3></div>
+        <div class="chart-shell chart-shell--large">
+          <canvas baseChart [type]="'line'" [data]="activityChartData" [options]="activityChartOptions"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Logins</h3></div>
+        <div class="chart-shell chart-shell--medium">
+          <canvas baseChart [type]="'bar'" [data]="activityChartData" [options]="activityChartOptions"></canvas>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+</div>

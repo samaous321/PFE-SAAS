@@ -1,0 +1,697 @@
+@import '../styles/variables.scss';
+
+// =====================================================
+// COMPOSANTS RÉUTILISABLES - Buttons, Forms, Modals
+// =====================================================
+
+// ============= BOUTONS =============
+.btn {
+  @include button-base;
+
+  // Variantes de couleur
+  &.btn-primary {
+    background: linear-gradient(135deg, $primary 0%, $primary-dark 100%);
+    color: white;
+    border: 1px solid transparent;
+    box-shadow: 0 10px 20px rgba(15, 109, 255, 0.24);
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 24px rgba(15, 109, 255, 0.28);
+    }
+  }
+
+  &.btn-secondary {
+    background-color: rgba(15, 109, 255, 0.06);
+    color: $primary-dark;
+    border: 1px solid rgba(15, 109, 255, 0.25);
+
+    &:hover:not(:disabled) {
+      background-color: rgba(15, 109, 255, 0.12);
+      border-color: rgba(15, 109, 255, 0.45);
+      color: $primary-dark;
+    }
+  }
+
+  &.btn-success {
+    background-color: $success;
+    color: white;
+    border: 1px solid $success;
+
+    &:hover:not(:disabled) {
+      background-color: darken($success, 10%);
+      border-color: darken($success, 10%);
+    }
+  }
+
+  &.btn-danger {
+    background-color: $danger;
+    color: white;
+    border: 1px solid $danger;
+
+    &:hover:not(:disabled) {
+      background-color: darken($danger, 10%);
+      border-color: darken($danger, 10%);
+    }
+  }
+
+  &.btn-warning {
+    background-color: $warning;
+    color: white;
+    border: 1px solid $warning;
+
+    &:hover:not(:disabled) {
+      background-color: darken($warning, 10%);
+      border-color: darken($warning, 10%);
+    }
+  }
+
+  // Tailles
+  &.btn-sm {
+    padding: $space-xs $space-sm;
+    font-size: $font-size-sm;
+  }
+
+  &.btn-lg {
+    padding: $space-md $space-lg;
+    font-size: $font-size-lg;
+  }
+
+  // Full width
+  &.btn-block {
+    width: 100%;
+  }
+
+  // Ghost button
+  &.btn-ghost {
+    background-color: transparent;
+    color: $text-primary;
+    border: 1px solid transparent;
+
+    &:hover:not(:disabled) {
+      background-color: $bg-secondary;
+      border-color: $border-color;
+    }
+  }
+
+  // Loading state
+  &.btn-loading {
+    pointer-events: none;
+  }
+}
+
+// ============= FORMES =============
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-lg;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: $space-sm;
+
+  &.form-group-inline {
+    flex-direction: row;
+    align-items: center;
+
+    label {
+      flex-shrink: 0;
+      min-width: 120px;
+    }
+
+    input, select, textarea {
+      flex: 1;
+    }
+  }
+
+  &.form-group-row {
+    flex-direction: row;
+    gap: $space-md;
+
+    .form-group {
+      flex: 1;
+      gap: $space-sm;
+    }
+  }
+}
+
+label {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $text-primary;
+
+  .required {
+    color: $danger;
+    margin-left: $space-xs;
+  }
+}
+
+input, select, textarea {
+  @include input-base;
+  background-color: rgba(255, 255, 255, 0.9);
+
+  &:hover:not(:disabled) {
+    border-color: $gray-300;
+  }
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right $space-md center;
+  background-size: 16px;
+  padding-right: $space-lg + $space-lg;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  cursor: pointer;
+  margin-right: $space-sm;
+}
+
+// ============= INPUTS ÉTATS =============
+input:invalid,
+select:invalid,
+textarea:invalid {
+  border-color: $danger;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: $bg-secondary;
+  color: $text-muted;
+  cursor: not-allowed;
+}
+
+input::placeholder {
+  color: $text-muted;
+}
+
+// ============= TEXTE D'AIDE =============
+.form-text {
+  font-size: $font-size-xs;
+  color: $text-secondary;
+  margin-top: $space-xs;
+}
+
+.form-error {
+  font-size: $font-size-xs;
+  color: $danger;
+  margin-top: $space-xs;
+}
+
+.form-success {
+  font-size: $font-size-xs;
+  color: $success;
+  margin-top: $space-xs;
+}
+
+// ============= MODALS/DIALOGS =============
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-modal;
+
+  &.active {
+    display: flex;
+  }
+
+  animation: fadeIn $transition-fast;
+}
+
+.modal {
+  background-color: $bg-primary;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-xl;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp $transition-normal;
+
+  @include responsive('md') {
+    width: 500px;
+  }
+
+  .modal-header {
+    padding: $space-lg;
+    border-bottom: 1px solid $border-color;
+    @include flex-between;
+
+    .modal-title {
+      margin: 0;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $text-primary;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: $font-size-lg;
+      color: $text-secondary;
+      transition: color $transition-fast;
+
+      &:hover {
+        color: $text-primary;
+      }
+    }
+  }
+
+  .modal-body {
+    padding: $space-lg;
+  }
+
+  .modal-footer {
+    padding: $space-lg;
+    border-top: 1px solid $border-color;
+    @include flex-between;
+    gap: $space-md;
+
+    button {
+      flex: 1;
+    }
+  }
+}
+
+// ============= CARDS =============
+.card {
+  @include card;
+  box-shadow: $shadow-md;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-lg;
+  }
+
+  .card-header {
+    margin: (-$space-lg) (-$space-lg) $space-lg (-$space-lg);
+    padding: $space-lg;
+    border-bottom: 1px solid $border-color;
+
+    h3, h4, h5 {
+      margin: 0;
+      color: $text-primary;
+    }
+  }
+
+  .card-body {
+    // Padding already in .card
+  }
+
+  .card-footer {
+    margin: $space-lg (-$space-lg) (-$space-lg) (-$space-lg);
+    padding: $space-lg;
+    border-top: 1px solid $border-color;
+    background-color: $bg-secondary;
+  }
+}
+
+// ============= TABLEAUX =============
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: $bg-primary;
+  border-radius: $radius-lg;
+  overflow: hidden;
+
+  thead {
+    background-color: $bg-tertiary;
+    border-bottom: 1px solid $border-color;
+
+    th {
+      padding: $space-md $space-lg;
+      text-align: left;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $text-primary;
+      white-space: nowrap;
+
+      &.sortable {
+        cursor: pointer;
+        user-select: none;
+
+        &:hover {
+          background-color: $gray-200;
+        }
+      }
+    }
+  }
+
+  tbody {
+    tr {
+      border-bottom: 1px solid $border-color;
+      transition: background-color $transition-fast;
+
+      &:hover {
+        background-color: #f7fbff;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      td {
+        padding: $space-md $space-lg;
+        font-size: $font-size-sm;
+        color: $text-primary;
+
+        &.text-muted {
+          color: $text-secondary;
+        }
+
+        &.text-danger {
+          color: $danger;
+          font-weight: $font-weight-medium;
+        }
+
+        &.text-success {
+          color: $success;
+          font-weight: $font-weight-medium;
+        }
+      }
+    }
+  }
+}
+
+// ============= PAGINATION =============
+.pagination {
+  @include flex-center;
+  gap: $space-sm;
+  margin-top: $space-lg;
+
+  button, a {
+    @include flex-center;
+    min-width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    border: 1px solid $border-color;
+    background-color: $bg-primary;
+    color: $text-primary;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary;
+      color: $primary;
+    }
+
+    &.active {
+      background-color: $primary;
+      color: white;
+      border-color: $primary;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// ============= BADGES =============
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-xs $space-sm;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+
+  &.badge-primary {
+    background-color: $primary-light;
+    color: $primary-dark;
+  }
+
+  &.badge-success {
+    background-color: $success-light;
+    color: darken($success, 20%);
+  }
+
+  &.badge-danger {
+    background-color: $danger-light;
+    color: darken($danger, 20%);
+  }
+
+  &.badge-warning {
+    background-color: $warning-light;
+    color: darken($warning, 20%);
+  }
+
+  &.badge-info {
+    background-color: $info-light;
+    color: darken($info, 20%);
+  }
+
+  &.badge-secondary {
+    background-color: $gray-200;
+    color: $gray-700;
+  }
+}
+
+// ============= ALERTES =============
+.alert {
+  padding: $space-md $space-lg;
+  border-radius: $radius-lg;
+  border-left: 4px solid;
+  margin-bottom: $space-lg;
+  @include flex-between;
+
+  .alert-content {
+    flex: 1;
+
+    .alert-title {
+      font-weight: $font-weight-semibold;
+      margin-bottom: $space-xs;
+    }
+
+    .alert-message {
+      font-size: $font-size-sm;
+      margin: 0;
+    }
+  }
+
+  .alert-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: $font-size-lg;
+    flex-shrink: 0;
+    margin-left: $space-md;
+  }
+
+  &.alert-success {
+    background-color: $success-light;
+    border-color: $success;
+    color: darken($success, 20%);
+  }
+
+  &.alert-danger {
+    background-color: $danger-light;
+    border-color: $danger;
+    color: darken($danger, 20%);
+  }
+
+  &.alert-warning {
+    background-color: $warning-light;
+    border-color: $warning;
+    color: darken($warning, 20%);
+  }
+
+  &.alert-info {
+    background-color: $info-light;
+    border-color: $info;
+    color: darken($info, 20%);
+  }
+}
+
+// ============= ANIMATIONS =============
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid $border-color;
+  border-top-color: $primary;
+  border-radius: $radius-full;
+  animation: spin 0.8s linear infinite;
+}
+
+// ============= KPI CARDS =============
+.kpi-card {
+  @include card;
+  text-align: center;
+
+  .kpi-value {
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    color: $primary;
+    margin: $space-md 0;
+  }
+
+  .kpi-label {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    margin: $space-md 0;
+  }
+
+  .kpi-change {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-xs;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+
+    &.positive {
+      color: $success;
+    }
+
+    &.negative {
+      color: $danger;
+    }
+  }
+}
+
+// ============= PROGRESS BAR =============
+.progress {
+  width: 100%;
+  height: 8px;
+  background-color: $bg-tertiary;
+  border-radius: $radius-full;
+  overflow: hidden;
+
+  .progress-bar {
+    height: 100%;
+    background-color: $primary;
+    border-radius: $radius-full;
+    transition: width $transition-normal;
+  }
+}
+
+// ============= GRID =============
+.grid {
+  display: grid;
+  gap: $space-lg;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+
+  &.grid-2 {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+    @include responsive('md') {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &.grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+
+    @include responsive('lg') {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
+
+  &.grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+    @include responsive('xl') {
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+  }
+}
+
+// ============= SHARE FORM GRID =============
+.share-form-grid {
+  display: grid;
+  gap: $space-md;
+  grid-template-columns: 1fr;
+
+  @include responsive('sm') {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @include responsive('lg') {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  h3 {
+    grid-column: 1 / -1;
+    margin-bottom: $space-xs;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: $space-md;
+    margin-top: $space-sm;
+  }
+}
+
+// ============= UPLOAD FORM GRID =============
+.upload-form-grid {
+  display: grid;
+  gap: $space-md;
+  grid-template-columns: 1fr auto;
+  align-items: flex-end;
+
+  @include responsive('xs') {
+    grid-template-columns: 1fr;
+  }
+}

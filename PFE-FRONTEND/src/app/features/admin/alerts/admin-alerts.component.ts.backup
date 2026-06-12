@@ -1,0 +1,1886 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AdminApiService } from '../../../core/services/admin-api.service';
+import { FileApiService } from '../../../core/services/file-api.service';
+import { MalwareAlert, FileOwner } from '../../../core/models/file.model';
+import { Tenant } from '../../../core/models/tenant.model';
+
+@Component({
+  standalone: true,
+  selector: 'app-admin-alerts',
+  imports: [CommonModule, FormsModule],
+  templateUrl: './admin-alerts.component.html',
+  styleUrls: ['./admin-alerts.component.css']
+})
+export class AdminAlertsComponent implements OnInit {
+  private readonly adminApi = inject(AdminApiService);
+  private readonly fileApi = inject(FileApiService);
+
+  tenants: Tenant[] = [];
+  selectedTenant = '';
+  malwareAlerts: MalwareAlert[] = [];
+  filteredAlerts: MalwareAlert[] = [];
+                <button
+                  type="button"
+                  class="action-btn block"
+                  (click)="manageQuarantine(alert, 'block'); $event.stopPropagation()"
+                  [disabled]="actionLoading || alert.status === 'blocked'"
+                >
+                  <span class="btn-icon">🚫</span>
+                  Bloquer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="!alertLoading && paginatedAlerts.length > 0" class="pagination-controls">
+            <button type="button" (click)="previousPage()" [disabled]="currentPage === 1" class="pagination-btn">
+              ← Précédent
+            </button>
+            <span class="pagination-info">
+              Page {{ currentPage }} / {{ totalPages }} ({{ filteredAlerts.length }} alertes)
+            </span>
+            <button type="button" (click)="nextPage()" [disabled]="currentPage >= totalPages" class="pagination-btn">
+              Suivant →
+            </button>
+          </div>
+        </div>
+
+        <div class="alert-details-section">
+          <div class="details-card">
+            <div class="details-header">
+              <h2>🔍 Détails d'investigation</h2>
+              <p class="details-subtitle">Analyse approfondie du fichier sélectionné</p>
+            </div>
+
+            <div *ngIf="!selectedAlert" class="details-empty">
+              <div class="empty-icon">📋</div>
+              <h3>Sélectionnez une alerte</h3>
+              <p>Cliquez sur une alerte pour voir ses détails complets.</p>
+            </div>
+
+            <div *ngIf="selectedAlert" class="details-content">
+              <div class="details-grid">
+                <div class="detail-group">
+                  <h4>📄 Informations générales</h4>
+                  <div class="detail-item">
+                    <span class="detail-label">Nom du fichier</span>
+                    <span class="detail-value">{{ selectedAlert.originalName }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Taille</span>
+                    <span class="detail-value">{{ formatBytes(selectedAlert.size || 0) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Type MIME</span>
+                    <span class="detail-value">{{ selectedAlert.mimeType || 'Inconnu' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Hash SHA256</span>
+                    <span class="detail-value hash">{{ selectedAlert.contentHash || 'Non calculé' }}</span>
+                  </div>
+                </div>
+
+                <div class="detail-group">
+                  <h4>👥 Propriétaires & Accès</h4>
+                  <div class="detail-item">
+                    <span class="detail-label">Propriétaire</span>
+                    <span class="detail-value">{{ getOwnerDisplayName(selectedAlert) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Tenant</span>
+                    <span class="detail-value">{{ getTenantDisplayName(selectedAlert) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Destinataires</span>
+                    <span class="detail-value">{{ getRecipientCountLabel(selectedAlert) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Téléchargements</span>
+                    <span class="detail-value">{{ selectedAlert.downloadCount || 0 }}</span>
+                  </div>
+                </div>
+
+                <div class="detail-group">
+                  <h4>🛡️ État de sécurité</h4>
+                  <div class="detail-item">
+                    <span class="detail-label">Statut actuel</span>
+                    <span class="detail-value status" [ngClass]="selectedAlert.status">{{ selectedAlert.status || 'inconnu' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Quarantaine</span>
+                    <span class="detail-value">{{ selectedAlert.scanMetadata?.quarantineStatus || 'unknown' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Score de menace</span>
+                    <div class="threat-score-display">
+                      <div class="score-bar">
+                        <div class="score-fill" [style.width.%]="getThreatScore(selectedAlert)" [ngClass]="getThreatSeverity(selectedAlert)"></div>
+                      </div>
+                      <span class="score-value">{{ getThreatScore(selectedAlert) }}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-group">
+                  <h4>🔬 Analyses antivirus</h4>
+                  <div class="detail-item">
+                    <span class="detail-label">ClamAV</span>
+                    <span class="detail-value" [ngClass]="selectedAlert.scanMetadata?.clamavResult?.isInfected ? 'infected' : 'clean'">
+                      {{ selectedAlert.scanMetadata?.clamavResult?.isInfected ? 'INFECTÉ' : 'Propre' }}
+                    </span>
+                  </div>
+                  <div class="detail-item" *ngIf="selectedAlert.scanMetadata?.clamavResult?.viruses?.length">
+                    <span class="detail-label">Virus détectés</span>
+                    <span class="detail-value viruses">{{ selectedAlert.scanMetadata.clamavResult.viruses.join(', ') }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">VirusTotal</span>
+                    <span class="detail-value" [ngClass]="selectedAlert.scanMetadata?.virustotalResult?.isInfected ? 'infected' : 'clean'">
+                      {{ selectedAlert.scanMetadata?.virustotalResult?.isInfected ? 'INFECTÉ' : 'Propre' }}
+                    </span>
+                  </div>
+                  <div class="detail-item" *ngIf="selectedAlert.scanMetadata?.virustotalResult?.detectionRatio">
+                    <span class="detail-label">Ratio détection</span>
+                    <span class="detail-value">{{ selectedAlert.scanMetadata.virustotalResult.detectionRatio }}</span>
+                  </div>
+                  <div class="detail-item" *ngIf="selectedAlert.contentHash">
+                    <span class="detail-label">Lien VirusTotal</span>
+                    <button type="button" class="link-btn" (click)="openVirusTotal(selectedAlert.contentHash)">
+                      🔗 Voir sur VirusTotal
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions-section">
+                <h4>⚡ Actions disponibles</h4>
+                <div class="actions-grid">
+                  <button
+                    type="button"
+                    class="action-btn primary download"
+                    (click)="downloadFile(selectedAlert)"
+                    [disabled]="actionLoading"
+                  >
+                    <span class="btn-icon">📥</span>
+                    Télécharger le fichier
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn success"
+                    (click)="manageQuarantine(selectedAlert, 'whitelist')"
+                    [disabled]="actionLoading || selectedAlert.status === 'active'"
+                  >
+                    <span class="btn-icon">✅</span>
+                    Approuver & Débloquer
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn warning"
+                    (click)="manageQuarantine(selectedAlert, 'investigate')"
+                    [disabled]="actionLoading"
+                  >
+                    <span class="btn-icon">🔍</span>
+                    Marquer pour investigation
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn danger"
+                    (click)="manageQuarantine(selectedAlert, 'block')"
+                    [disabled]="actionLoading || selectedAlert.status === 'blocked'"
+                  >
+                    <span class="btn-icon">🚫</span>
+                    Bloquer définitivement
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn danger delete"
+                    (click)="deleteFile(selectedAlert)"
+                    [disabled]="actionLoading"
+                  >
+                    <span class="btn-icon">🗑️</span>
+                    Supprimer le fichier
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [
+    `
+      .alerts-page {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        padding: 2rem 2rem 3rem;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      }
+
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 2rem;
+        align-items: flex-start;
+        padding: 2rem 2rem 1.5rem;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(219, 227, 243, 0.8);
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(10px);
+      }
+
+      .eyebrow {
+        margin: 0 0 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        font-size: 0.85rem;
+        color: #0f6ad4;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .page-header h1 {
+        margin: 0;
+        font-size: clamp(2rem, 3vw, 2.5rem);
+        color: #0f172a;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .subtitle {
+        margin: 0.75rem 0 0;
+        color: #64748b;
+        max-width: 50rem;
+        font-size: 1.1rem;
+        line-height: 1.5;
+      }
+
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+        min-width: 400px;
+      }
+
+      .search-group, .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .filter-label {
+        font-size: 0.9rem;
+        color: #475467;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .tenant-select {
+        min-width: 220px;
+        padding: 0.9rem 1.2rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        color: #1e293b;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+
+      .tenant-select:focus {
+        outline: none;
+        border-color: #0f6ad4;
+        box-shadow: 0 0 0 3px rgba(15, 106, 212, 0.1);
+      }
+
+      .refresh-btn {
+        border: none;
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
+        background: linear-gradient(135deg, #0f6ad4, #0ea5e9);
+        color: white;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        box-shadow: 0 20px 40px rgba(14, 165, 233, 0.25);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .refresh-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(14, 165, 233, 0.35);
+      }
+
+      .refresh-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 10px 20px rgba(14, 165, 233, 0.15);
+      }
+
+      .btn-icon {
+        font-size: 1rem;
+      }
+
+      .banner {
+        padding: 1.25rem 1.5rem;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+      }
+
+      .error-banner {
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+        color: #dc2626;
+        border: 1px solid #fecaca;
+        box-shadow: 0 10px 25px rgba(220, 38, 38, 0.1);
+      }
+
+      .banner-icon {
+        font-size: 1.25rem;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .stat-card {
+        background: white;
+        border: 1px solid rgba(219, 227, 243, 0.8);
+        border-radius: 1.25rem;
+        padding: 1.75rem;
+        box-shadow: 0 15px 35px rgba(15, 23, 42, 0.06);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.1);
+      }
+
+      .stat-icon {
+        font-size: 2rem;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 1rem;
+        background: rgba(15, 106, 212, 0.1);
+      }
+
+      .stat-card.blocked .stat-icon { background: rgba(220, 38, 38, 0.1); }
+      .stat-card.quarantined .stat-icon { background: rgba(245, 158, 11, 0.1); }
+      .stat-card.infected .stat-icon { background: rgba(239, 68, 68, 0.1); }
+
+      .stat-content {
+        flex: 1;
+      }
+
+      .stat-number {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 0.95rem;
+        color: #64748b;
+        font-weight: 600;
+        margin-top: 0.25rem;
+      }
+
+      .alerts-container {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 2rem;
+        height: calc(100vh - 300px);
+      }
+
+      .alerts-list-section {
+        background: white;
+        border: 1px solid rgba(219, 227, 243, 0.8);
+        border-radius: 1.25rem;
+        overflow: hidden;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 2rem;
+        padding: 1.75rem 1.75rem 1.25rem;
+        border-bottom: 1px solid rgba(219, 227, 243, 0.8);
+      }
+
+      .section-info h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #0f172a;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .section-subtitle {
+        margin: 0.5rem 0 0;
+        color: #64748b;
+        font-size: 0.95rem;
+        max-width: 35rem;
+      }
+
+      .sort-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .sort-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: #475467;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .sort-label input[type="radio"] {
+        margin: 0;
+        accent-color: #0f6ad4;
+      }
+
+      .loading-state {
+        padding: 4rem 2rem;
+        text-align: center;
+        color: #64748b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .loading-spinner {
+        width: 2rem;
+        height: 2rem;
+        border: 3px solid #e2e8f0;
+        border-top: 3px solid #0f6ad4;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .empty-state {
+        padding: 4rem 2rem;
+        text-align: center;
+        color: #64748b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .empty-icon {
+        font-size: 3rem;
+        opacity: 0.5;
+      }
+
+      .empty-state h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      .empty-state p {
+        margin: 0.5rem 0 0;
+        font-size: 1rem;
+      }
+
+      .alerts-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .alert-card {
+        width: 100%;
+        border: 2px solid transparent;
+        border-radius: 1rem;
+        background: #fafbff;
+        padding: 1.5rem;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+      }
+
+      .alert-card:hover,
+      .alert-card.selected {
+        background: #f0f4ff;
+        border-color: #b3d4ff;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+      }
+
+      .alert-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .alert-title-section {
+        flex: 1;
+      }
+
+      .alert-filename {
+        display: block;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        word-break: break-all;
+      }
+
+      .alert-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: #64748b;
+      }
+
+      .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .meta-icon {
+        font-size: 0.9rem;
+      }
+
+      .alert-status-section {
+        flex-shrink: 0;
+      }
+
+      .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .status-badge.danger {
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+        color: #dc2626;
+      }
+
+      .status-badge.warning {
+        background: linear-gradient(135deg, #fefce8, #fef3c7);
+        color: #d97706;
+      }
+
+      .status-badge.success {
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        color: #16a34a;
+      }
+
+      .alert-threat-info {
+        margin-bottom: 1rem;
+      }
+
+      .threat-score {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .score-label {
+        font-size: 0.9rem;
+        color: #374151;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .score-bar {
+        flex: 1;
+        height: 0.5rem;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      .score-fill {
+        height: 100%;
+        border-radius: 999px;
+        transition: all 0.3s ease;
+      }
+
+      .score-fill.critical {
+        background: linear-gradient(90deg, #dc2626, #b91c1c);
+        box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+      }
+
+      .score-fill.high {
+        background: linear-gradient(90deg, #ea580c, #c2410c);
+        box-shadow: 0 0 8px rgba(234, 88, 12, 0.4);
+      }
+
+      .score-fill.medium {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+      }
+
+      .score-fill.low {
+        background: linear-gradient(90deg, #10b981, #059669);
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+      }
+
+      .score-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #0f172a;
+        min-width: 3rem;
+        text-align: right;
+      }
+
+      .threat-details {
+        margin-top: 0.5rem;
+      }
+
+      .threat-indicators {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .indicator {
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+      }
+
+      .indicator.active {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #fecaca;
+      }
+
+      .alert-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .action-btn {
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      .action-btn.download {
+        background: #f0f4ff;
+        color: #0f6ad4;
+        border: 1px solid #b3d4ff;
+      }
+
+      .action-btn.details {
+        background: #f8fafc;
+        color: #475467;
+        border: 1px solid #e2e8f0;
+      }
+
+      .action-btn.quarantine {
+        background: #fefce8;
+        color: #d97706;
+        border: 1px solid #fde68a;
+      }
+
+      .action-btn.block {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+      }
+
+      .action-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      }
+
+      .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem 1.75rem;
+        border-top: 1px solid rgba(219, 227, 243, 0.8);
+        background: #fafbff;
+      }
+
+      .pagination-btn {
+        border: 1px solid #d1d5db;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        background: white;
+        color: #374151;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+
+      .pagination-btn:hover:not(:disabled) {
+        background: #f9fafb;
+        border-color: #9ca3af;
+        transform: translateY(-1px);
+      }
+
+      .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .pagination-info {
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .alert-details-section {
+        background: white;
+        border: 1px solid rgba(219, 227, 243, 0.8);
+        border-radius: 1.25rem;
+        overflow: hidden;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .details-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.75rem 1.75rem 1.25rem;
+        border-bottom: 1px solid rgba(219, 227, 243, 0.8);
+      }
+
+      .details-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #0f172a;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .details-subtitle {
+        margin: 0.5rem 0 0;
+        color: #64748b;
+        font-size: 0.95rem;
+      }
+
+      .details-empty {
+        padding: 4rem 2rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+      }
+
+      .details-empty .empty-icon {
+        font-size: 4rem;
+        opacity: 0.3;
+      }
+
+      .details-empty h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      .details-empty p {
+        margin: 0.5rem 0 0;
+        font-size: 1.1rem;
+        color: #64748b;
+      }
+
+      .details-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+
+      .detail-group {
+        background: #fafbff;
+        border: 1px solid rgba(219, 227, 243, 0.6);
+        border-radius: 1rem;
+        padding: 1.5rem;
+      }
+
+      .detail-group h4 {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+        color: #0f172a;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(219, 227, 243, 0.4);
+      }
+
+      .detail-item:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        font-size: 0.9rem;
+        color: #475467;
+        font-weight: 600;
+      }
+
+      .detail-value {
+        font-size: 0.9rem;
+        color: #0f172a;
+        font-weight: 500;
+        text-align: right;
+        word-break: break-all;
+      }
+
+      .detail-value.hash {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.8rem;
+        background: #f1f5f9;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .detail-value.status.active {
+        color: #16a34a;
+        font-weight: 700;
+      }
+
+      .detail-value.status.blocked {
+        color: #dc2626;
+        font-weight: 700;
+      }
+
+      .detail-value.status.quarantined {
+        color: #d97706;
+        font-weight: 700;
+      }
+
+      .detail-value.infected {
+        color: #dc2626;
+        font-weight: 700;
+      }
+
+      .detail-value.clean {
+        color: #16a34a;
+        font-weight: 700;
+      }
+
+      .detail-value.viruses {
+        color: #dc2626;
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+
+      .threat-score-display {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .link-btn {
+        border: 1px solid #b3d4ff;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f0f4ff;
+        color: #0f6ad4;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.85rem;
+      }
+
+      .link-btn:hover {
+        background: #e0e7ff;
+        transform: translateY(-1px);
+      }
+
+      .actions-section {
+        margin-top: auto;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(219, 227, 243, 0.8);
+      }
+
+      .actions-section h4 {
+        margin: 0 0 1.5rem;
+        font-size: 1.1rem;
+        color: #0f172a;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+
+      .action-btn.primary {
+        background: linear-gradient(135deg, #0f6ad4, #0ea5e9);
+        color: white;
+        border: none;
+        box-shadow: 0 10px 25px rgba(14, 165, 233, 0.2);
+      }
+
+      .action-btn.primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(14, 165, 233, 0.35);
+      }
+
+      .action-btn.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+      }
+
+      .action-btn.success:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(16, 185, 129, 0.35);
+      }
+
+      .action-btn.warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        border: none;
+        box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+      }
+
+      .action-btn.warning:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(245, 158, 11, 0.35);
+      }
+
+      .action-btn.danger {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        color: white;
+        border: none;
+        box-shadow: 0 10px 25px rgba(220, 38, 38, 0.2);
+      }
+
+      .action-btn.danger:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(220, 38, 38, 0.35);
+      }
+
+      .action-btn.delete {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+        color: white;
+        border: none;
+        box-shadow: 0 10px 25px rgba(107, 114, 128, 0.2);
+      }
+
+      .action-btn.delete:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(107, 114, 128, 0.35);
+      }
+
+      .search-input {
+        padding: 1rem 1.25rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        color: #1e293b;
+        font-size: 0.95rem;
+        font-weight: 500;
+        min-width: 300px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: #0f6ad4;
+        box-shadow: 0 0 0 3px rgba(15, 106, 212, 0.1);
+      }
+
+      .search-input::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
+      }
+
+      @media (max-width: 1400px) {
+        .alerts-container {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+
+        .details-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        .page-header {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 1.5rem;
+        }
+
+        .header-actions {
+          min-width: auto;
+          justify-content: stretch;
+        }
+
+        .search-input {
+          min-width: auto;
+          width: 100%;
+        }
+
+        .tenant-select {
+          width: 100%;
+        }
+
+        .stats-grid {
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        .section-header {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 1rem;
+        }
+
+        .sort-controls {
+          justify-content: center;
+        }
+
+        .alert-actions {
+          justify-content: center;
+        }
+
+        .actions-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .alerts-page {
+          padding: 1rem;
+        }
+
+        .page-header {
+          padding: 1.5rem;
+        }
+
+        .alerts-list {
+          padding: 0.75rem;
+        }
+
+        .alert-card {
+          padding: 1rem;
+        }
+
+        .alert-meta {
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .threat-score {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+
+        .score-bar {
+          width: 100%;
+        }
+
+        .alert-actions {
+          flex-direction: column;
+        }
+
+        .action-btn {
+          justify-content: center;
+        }
+
+        .details-content {
+          padding: 1.25rem;
+        }
+
+        .details-grid {
+          gap: 1rem;
+        }
+
+        .detail-group {
+          padding: 1rem;
+        }
+      }
+    `
+  ]
+        gap: 1rem;
+      }
+
+      .status-strip > div {
+        background: #fafbff;
+        border: 1px solid rgba(219, 227, 243, 0.95);
+        border-radius: 1rem;
+        padding: 1rem 1.2rem;
+      }
+
+      .status-strip strong {
+        display: block;
+        font-size: 1.45rem;
+        color: #10223d;
+      }
+
+      .status-strip span {
+        color: #64748b;
+        font-size: 0.92rem;
+      }
+
+      .alerts-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 1.5rem;
+      }
+
+      .alert-list-card,
+      .alert-detail-card {
+        background: white;
+        border: 1px solid rgba(219, 227, 243, 0.95);
+        border-radius: 1.2rem;
+        overflow: hidden;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.05);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.4rem 1.4rem 1rem;
+        border-bottom: 1px solid rgba(219, 227, 243, 0.95);
+      }
+
+      .card-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #101f3d;
+      }
+
+      .muted {
+        margin: 0.45rem 0 0;
+        color: #64748b;
+        font-size: 0.95rem;
+        max-width: 34rem;
+      }
+
+      .empty-state {
+        padding: 3rem 1.5rem;
+        text-align: center;
+        color: #475467;
+        font-size: 0.98rem;
+      }
+
+      .alert-list {
+        display: grid;
+        gap: 0.85rem;
+        padding: 1rem 1.2rem 1.25rem;
+      }
+
+      .alert-card {
+        width: 100%;
+        border: 1px solid transparent;
+        border-radius: 1rem;
+        background: #f8fbff;
+        padding: 1rem 1.25rem;
+        text-align: left;
+        cursor: pointer;
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      }
+
+      .alert-card:hover,
+      .alert-card.selected {
+        background: #eff5ff;
+        border-color: #b9d4ff;
+        transform: translateY(-1px);
+      }
+
+      .alert-summary {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .alert-summary strong {
+        display: block;
+        color: #0f172a;
+      }
+
+      .owner {
+        margin: 0.35rem 0 0;
+        color: #64748b;
+        font-size: 0.92rem;
+      }
+
+      .tag {
+        padding: 0.4rem 0.85rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .tag.danger {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      .tag.warning {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .tag.success {
+        background: #d1fae5;
+        color: #047857;
+      }
+
+      .alert-meta {
+        margin-top: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        color: #64748b;
+        font-size: 0.86rem;
+      }
+
+      .detail-header {
+        align-items: center;
+      }
+
+      .detail-body {
+        padding: 1.4rem 1.4rem 1.6rem;
+        display: grid;
+        gap: 1rem;
+      }
+
+      .detail-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.95rem 1rem;
+        border-radius: 0.95rem;
+        background: #f8fbff;
+      }
+
+      .detail-row span {
+        color: #475467;
+      }
+
+      .detail-row strong {
+        color: #0f172a;
+      }
+
+      .detail-note {
+        background: #eef2ff;
+      }
+
+      .detail-empty {
+        padding: 3.5rem 1.5rem;
+      }
+
+      .error-banner {
+        padding: 1rem 1.25rem;
+        border-radius: 1rem;
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+      }
+
+      .search-input {
+        padding: 0.8rem 1rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.85rem;
+        background: #fff;
+        color: #101828;
+        min-width: 260px;
+        font-size: 0.95rem;
+      }
+
+      .search-input::placeholder {
+        color: #9ca3af;
+      }
+
+      .score-bar {
+        height: 0.35rem;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+        margin: 0.35rem 0 0;
+      }
+
+      .score-bar.full {
+        height: 0.6rem;
+      }
+
+      .score-fill {
+        height: 100%;
+        border-radius: 999px;
+        transition: width 280ms ease, background 280ms ease;
+      }
+
+      .score-fill.critical {
+        background: linear-gradient(90deg, #dc2626, #991b1b);
+      }
+
+      .score-fill.high {
+        background: linear-gradient(90deg, #ea580c, #c2410c);
+      }
+
+      .score-fill.medium {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+      }
+
+      .score-fill.low {
+        background: linear-gradient(90deg, #10b981, #059669);
+      }
+
+      .score-text {
+        display: block;
+        margin-top: 0.35rem;
+        color: #64748b;
+        font-size: 0.8rem;
+      }
+
+      .threat-score {
+        display: grid;
+        gap: 0.5rem;
+        align-items: center;
+        grid-template-columns: 1fr auto;
+      }
+
+      .threat-score strong {
+        min-width: 3.5rem;
+        text-align: right;
+      }
+
+      .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.2rem;
+        border-top: 1px solid rgba(219, 227, 243, 0.95);
+        background: #f8fbff;
+      }
+
+      .pagination-controls button {
+        border: 1px solid #d1d5db;
+        border-radius: 0.75rem;
+        padding: 0.65rem 1rem;
+        background: white;
+        color: #374151;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 180ms ease;
+      }
+
+      .pagination-controls button:hover:not(:disabled) {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+      }
+
+      .pagination-controls button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .pagination-controls span {
+        color: #64748b;
+        font-weight: 600;
+      }
+
+      .actions-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(219, 227, 243, 0.95);
+      }
+
+      .action-btn {
+        border: none;
+        border-radius: 0.95rem;
+        padding: 0.95rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 200ms ease;
+      }
+
+      .action-btn.danger {
+        background: linear-gradient(135deg, #dc2626, #991b1b);
+        color: white;
+        box-shadow: 0 10px 25px rgba(220, 38, 38, 0.2);
+      }
+
+      .action-btn.danger:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(220, 38, 38, 0.35);
+      }
+
+      .action-btn.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+      }
+
+      .action-btn.success:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(16, 185, 129, 0.35);
+      }
+
+      .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+
+      @media (max-width: 1120px) {
+        .alerts-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .page-header,
+        .status-strip,
+        .alert-list-card,
+        .alert-detail-card {
+          padding: 1rem;
+        }
+
+        .status-strip {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .header-actions {
+          width: 100%;
+          justify-content: stretch;
+        }
+
+        select {
+          width: 100%;
+        }
+      }
+    `
+  ]
+})
+export class AdminAlertsComponent implements OnInit {
+  private readonly adminApi = inject(AdminApiService);
+  private readonly fileApi = inject(FileApiService);
+
+  tenants: Tenant[] = [];
+  selectedTenant = '';
+  malwareAlerts: MalwareAlert[] = [];
+  filteredAlerts: MalwareAlert[] = [];
+  paginatedAlerts: MalwareAlert[] = [];
+  selectedAlert: MalwareAlert | null = null;
+
+  searchTerm = '';
+  sortBy = 'newest';
+  currentPage = 1;
+  pageSize = 5;
+
+  alertLoading = false;
+  actionLoading = false;
+  alertError = '';
+  lastRefresh = '';
+
+  ngOnInit(): void {
+    this.loadTenants();
+    this.refresh();
+  }
+
+  loadTenants(): void {
+    this.adminApi.getTenantsList().subscribe({
+      next: (tenants) => { this.tenants = tenants || []; },
+      error: () => { this.tenants = []; }
+    });
+  }
+
+  refresh(): void {
+    this.alertLoading = true;
+    this.alertError = '';
+    this.adminApi.getMalwareAlerts({
+      tenantId: this.selectedTenant || undefined,
+      limit: 100
+    }).subscribe({
+      next: (response) => {
+        this.malwareAlerts = response?.data || [];
+        this.updateFilteredAlertsAfterRefresh();
+        this.selectedAlert = this.malwareAlerts[0] || null;
+        this.lastRefresh = new Date().toISOString();
+        this.alertLoading = false;
+      },
+      error: (response) => {
+        this.alertError = response?.error?.error || 'Impossible de charger les alertes de sécurité.';
+        this.alertLoading = false;
+      }
+    });
+  }
+
+  updateFilteredAlertsAfterRefresh(): void {
+    if (!this.searchTerm.trim()) {
+      this.filteredAlerts = [...this.malwareAlerts];
+    } else {
+      const term = this.searchTerm.toLowerCase();
+      this.filteredAlerts = this.malwareAlerts.filter((alert) =>
+        alert.originalName?.toLowerCase().includes(term)
+      );
+    }
+    // Vérifier si la page courante est encore valide après refresh
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = this.totalPages;
+    }
+    this.updatePaginatedAlerts();
+  }
+
+  onTenantChange(): void {
+    this.currentPage = 1;
+    this.refresh();
+  }
+
+  selectAlert(alert: MalwareAlert): void {
+    this.selectedAlert = alert;
+  }
+
+  updateFilteredAlerts(): void {
+    // Remettre à la page 1 seulement lors d'une recherche
+    this.currentPage = 1;
+    if (!this.searchTerm.trim()) {
+      this.filteredAlerts = [...this.malwareAlerts];
+    } else {
+      const term = this.searchTerm.toLowerCase();
+      this.filteredAlerts = this.malwareAlerts.filter((alert) =>
+        alert.originalName?.toLowerCase().includes(term)
+      );
+    }
+    this.updatePaginatedAlerts();
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.filteredAlerts.length / this.pageSize) || 1;
+  }
+
+  updatePaginatedAlerts(): void {
+    const start = (this.currentPage - 1) * this.pageSize;
+    const end = start + this.pageSize;
+    this.paginatedAlerts = this.filteredAlerts.slice(start, end);
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.updatePaginatedAlerts();
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.updatePaginatedAlerts();
+    }
+  }
+
+  getThreatScore(alert: MalwareAlert): number {
+    let score = 0;
+    const meta = alert.scanMetadata;
+
+    if (meta?.clamavResult?.isInfected) score += 40;
+    if (meta?.virustotalResult?.isInfected) score += 35;
+    if (String(meta?.quarantineStatus || '').toLowerCase() === 'quarantined') score += 20;
+    if (alert.status === 'blocked') score += 5;
+
+    return Math.min(score, 100);
+  }
+
+  getThreatSeverity(alert: MalwareAlert): string {
+    const score = this.getThreatScore(alert);
+    if (score >= 80) return 'critical';
+    if (score >= 60) return 'high';
+    if (score >= 40) return 'medium';
+    return 'low';
+  }
+
+  toggleFileStatus(newStatus: 'blocked' | 'active'): void {
+    if (!this.selectedAlert || this.actionLoading) return;
+
+    this.actionLoading = true;
+    this.fileApi.updateFileSettings(this.selectedAlert._id!, { status: newStatus }).subscribe({
+      next: (updatedFile) => {
+        // Recharger les données depuis le serveur pour refléter les changements
+        this.refresh();
+        this.actionLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors de la mise à jour:', err);
+        this.alertError = err?.error?.error || 'Erreur lors de la mise à jour du fichier.';
+        this.actionLoading = false;
+      }
+    });
+  }
+
+  getOwnerDisplayName(file: MalwareAlert): string {
+    const owner = file.ownerId;
+    if (!owner) {
+      return 'Propriétaire inconnu';
+    }
+    if (typeof owner === 'string') {
+      return owner;
+    }
+    return owner.firstName || owner.email || owner.lastName || owner._id || 'Propriétaire inconnu';
+  }
+
+  trackByAlertId(index: number, alert: MalwareAlert): string {
+    return alert._id || index.toString();
+  }
+
+  getAlertBadge(alert: MalwareAlert): string {
+    if (String(alert?.scanMetadata?.quarantineStatus || '').toLowerCase() === 'quarantined') {
+      return 'Quarantiné';
+    }
+    if (alert?.scanMetadata?.virustotalResult?.isInfected) {
+      return 'VirusTotal';
+    }
+    if (alert?.scanMetadata?.clamavResult?.isInfected) {
+      return 'ClamAV';
+    }
+    if (alert?.status === 'blocked') {
+      return 'Bloqué';
+    }
+    return 'Suspect';
+  }
+  getTenantDisplayName(alert: MalwareAlert): string {
+    const tenant = this.tenants.find((item) => item._id === alert.tenantId);
+    return tenant?.name || alert.tenantId || 'Inconnu';
+  }
+
+  getRecipientCountLabel(alert: MalwareAlert): string {
+    const sharedWith = (alert as unknown as { sharedWith?: Array<string | FileOwner> }).sharedWith;
+    if (!Array.isArray(sharedWith) || sharedWith.length === 0) {
+      return 'Aucun';
+    }
+    return `${sharedWith.length} destinataire(s)`;
+  }
+
+  openVirusTotal(hash: string): void {
+    if (!hash) {
+      return;
+    }
+    window.open(`https://www.virustotal.com/gui/file/${hash}`, '_blank');
+  }
+  getAlertStyle(alert: MalwareAlert): string {
+    if (String(alert?.scanMetadata?.quarantineStatus || '').toLowerCase() === 'quarantined') {
+      return 'danger';
+    }
+    if (alert?.scanMetadata?.clamavResult?.isInfected || alert?.scanMetadata?.virustotalResult?.isInfected) {
+      return 'warning';
+    }
+    return 'success';
+  }
+
+  get alertCounts() {
+    return {
+      blocked: this.malwareAlerts.filter((alert) => alert.status === 'blocked').length,
+      quarantined: this.malwareAlerts.filter((alert) => String(alert.scanMetadata?.quarantineStatus || '').toLowerCase() === 'quarantined').length,
+      clamav: this.malwareAlerts.filter((alert) => !!alert.scanMetadata?.clamavResult?.isInfected).length,
+      total: this.malwareAlerts.length
+    };
+  }
+
+  formatDateTime(value: string | undefined): string {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('fr-FR', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
+  }
+
+  downloadFile(alert: MalwareAlert): void {
+    if (!alert || this.actionLoading) return;
+
+    this.actionLoading = true;
+    this.fileApi.downloadFile(alert._id!).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = alert.originalName || 'file';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        this.actionLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors du téléchargement:', err);
+        this.alertError = err?.error?.error || 'Erreur lors du téléchargement du fichier.';
+        this.actionLoading = false;
+      }
+    });
+  }
+
+  manageQuarantine(alert: MalwareAlert, action: string): void {
+    if (!alert || this.actionLoading) return;
+
+    this.actionLoading = true;
+    // Call the backend API to manage quarantine
+    this.adminApi.manageQuarantinedFile(alert._id!, action).subscribe({
+      next: (result) => {
+        // Refresh the alerts to show updated status
+        this.refresh();
+        this.actionLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors de la gestion de quarantaine:', err);
+        this.alertError = err?.error?.error || 'Erreur lors de la gestion de quarantaine.';
+        this.actionLoading = false;
+      }
+    });
+  }
+
+  deleteFile(alert: MalwareAlert): void {
+    if (!alert || this.actionLoading) return;
+
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le fichier "${alert.originalName}" ?`)) {
+      return;
+    }
+
+    this.actionLoading = true;
+    this.fileApi.deleteFile(alert._id!).subscribe({
+      next: () => {
+        // Refresh the alerts to remove the deleted file
+        this.refresh();
+        this.actionLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors de la suppression:', err);
+        this.alertError = err?.error?.error || 'Erreur lors de la suppression du fichier.';
+        this.actionLoading = false;
+      }
+    });
+  }
+}

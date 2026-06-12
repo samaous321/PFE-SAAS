@@ -1,0 +1,334 @@
+// Premium SaaS sidebar look — presentation only (no logic touched).
+.folder-tree {
+  --bg: #f8f9fb;
+  --panel: #ffffff;
+  --border: #e4e8ef;
+  --muted: #6b7591;
+  --text: #1f2437;
+  --brand: #2563eb;
+  --brand-soft: #eff6ff;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 100%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tree-header {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+}
+
+.btn-icon-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.tree-nodes {
+  flex: 1;
+  padding: 10px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(154, 163, 181, 0.55); border-radius: 999px; }
+}
+
+.tree-node {
+  .node-content {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 12px;
+    margin: 2px 10px;
+    transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+    min-width: 0;
+    flex: 1;
+    position: relative;
+    color: var(--text);
+
+    &:hover {
+      background: rgba(228, 232, 239, 0.55);
+    }
+
+    &.selected {
+      background: var(--brand-soft);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 6px;
+        top: 8px;
+        bottom: 8px;
+        width: 3px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, var(--brand), #8b5cf6);
+      }
+
+      .node-actions {
+        opacity: 1;
+      }
+    }
+
+    &.current {
+      box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.22);
+    }
+  }
+
+  .toggle-icon,
+  .toggle-icon.placeholder {
+    width: 18px;
+    min-width: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 6px;
+    font-size: 12px;
+    color: rgba(107, 117, 145, 0.9);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-icon.placeholder {
+    cursor: default;
+  }
+
+  .node-icon {
+    margin-right: 8px;
+    font-size: 14px;
+    user-select: none;
+    opacity: 0.92;
+  }
+
+  .node-label {
+    flex: 1;
+    font-size: 0.835rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .file-count {
+    margin-left: 8px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .node-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 120ms ease;
+
+    .node-content:hover &,
+    .node-content.selected & {
+      opacity: 1;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 10px;
+      font-size: 12px;
+      transition: background-color 120ms ease, transform 120ms ease;
+      flex-shrink: 0;
+
+      &:hover {
+        background: rgba(31, 36, 55, 0.06);
+        transform: translateY(-1px);
+      }
+    }
+
+    .btn-danger {
+      color: var(--danger);
+
+      &:hover {
+        background: var(--danger-soft);
+      }
+    }
+  }
+}
+
+.root-node {
+  margin-bottom: 8px;
+}
+
+.tree-children {
+  margin-left: 14px;
+  border-left: 1px dashed rgba(205, 211, 222, 0.9);
+}
+
+.folder-file-list {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+.folder-file-item {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 6px;
+  font-size: 0.78rem;
+  color: var(--text);
+  border-bottom: 1px solid rgba(228, 232, 239, 0.7);
+
+  &:hover {
+    background: rgba(239, 246, 255, 0.6);
+    border-radius: 10px;
+  }
+}
+
+.folder-file-item:last-child {
+  border-bottom: none;
+}
+
+.file-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+}
+
+.file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-date {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.child-node {
+  .node-content {
+    padding-left: 12px;
+  }
+}
+
+.grandchild-node {
+  .node-content {
+    padding-left: 8px;
+    font-size: 0.82rem;
+  }
+}
+
+.create-folder-input {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &.subfolder-input {
+    margin-left: 14px;
+    padding-left: 10px;
+  }
+
+  input {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 0.82rem;
+    background: var(--panel);
+    color: var(--text);
+
+    &:focus {
+      outline: none;
+      border-color: rgba(37, 99, 235, 0.55);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+    }
+  }
+}
+
+.breadcrumb {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 0.72rem;
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  .breadcrumb-item {
+    cursor: pointer;
+    color: var(--brand);
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &.active {
+      cursor: default;
+      color: var(--text);
+      font-weight: 700;
+    }
+  }
+
+  .breadcrumb-separator {
+    margin: 0 4px;
+    color: rgba(154, 163, 181, 0.9);
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .folder-tree {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tree-header {
+    padding: 12px;
+  }
+
+  .tree-nodes {
+    max-height: 200px;
+  }
+}

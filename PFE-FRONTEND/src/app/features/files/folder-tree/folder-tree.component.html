@@ -1,0 +1,103 @@
+<div class="folder-tree">
+  <div class="tree-header">
+    <h3>Mes dossiers</h3>
+    <button class="btn btn-sm btn-primary" type="button" (click)="showCreateFolderInput(null)">
+      <span class="btn-icon-emoji" aria-hidden="true">➕</span>
+      Nouveau
+    </button>
+  </div>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <span class="breadcrumb-item" (click)="selectFolder(null)" title="Tous les fichiers">🏠</span>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-item active">{{ getSelectedFolderPath() }}</span>
+  </div>
+
+  <!-- Root level create input -->
+  <div class="create-folder-input" *ngIf="showCreateInput['root']">
+    <input
+      type="text"
+      [(ngModel)]="newFolderName"
+      placeholder="Nom du dossier"
+      (keyup.enter)="createFolder(null)"
+      (keyup.escape)="hideCreateFolderInput(null)"
+      #createInput
+    >
+    <button class="btn btn-xs btn-success" (click)="createFolder(null)">✓</button>
+    <button class="btn btn-xs btn-secondary" (click)="hideCreateFolderInput(null)">✗</button>
+  </div>
+
+  <!-- Root folders -->
+  <div class="tree-nodes">
+    <div class="tree-node root-node"
+         [class.selected]="isSelected(null)"
+         [class.current]="isCurrent(null)"
+         (click)="selectFolder(null)">
+      <div class="node-content"
+           [class.selected]="isSelected(null)"
+           [class.current]="isCurrent(null)">
+        <span class="toggle-icon placeholder" aria-hidden="true"></span>
+        <span class="node-icon" aria-hidden="true">🏠</span>
+        <span class="node-label">Tous les fichiers</span>
+      </div>
+    </div>
+
+    <ng-container *ngFor="let folder of getRootFolders()">
+      <ng-container *ngTemplateOutlet="folderNode; context: { $implicit: folder, depth: 0 }"></ng-container>
+    </ng-container>
+
+    <ng-template #folderNode let-folder let-depth="depth">
+      <div class="tree-node"
+           [ngClass]="{
+             'root-folder': !folder.parentId,
+             'child-node': !!folder.parentId,
+             'grandchild-node': depth >= 2
+           }">
+        <div class="node-content"
+             [class.selected]="isSelected(folder._id)"
+             [class.current]="isCurrent(folder._id)"
+             (click)="selectFolder(folder._id)">
+          <span class="toggle-icon"
+                *ngIf="hasChildren(folder._id) || getFileCount(folder._id) > 0"
+                (click)="toggleFolder(folder._id); $event.stopPropagation()">
+            {{ expandedFolders.has(folder._id) ? '▾' : '▸' }}
+          </span>
+          <span class="toggle-icon placeholder" *ngIf="!hasChildren(folder._id) && getFileCount(folder._id) === 0"></span>
+          <span class="node-icon">{{ getFolderIcon(folder) }}</span>
+          <span class="node-label">{{ folder.name }}</span>
+          <span class="file-count" *ngIf="getFileCount(folder._id) > 0">({{ getFileCount(folder._id) }})</span>
+          <div class="node-actions">
+            <button class="btn-icon" type="button" (click)="showCreateFolderInput(folder._id); $event.stopPropagation()" title="Nouveau sous-dossier">➕</button>
+            <button class="btn-icon" type="button" (click)="startRename(folder); $event.stopPropagation()" title="Renommer">✏️</button>
+            <button class="btn-icon btn-danger" type="button" (click)="deleteFolder(folder); $event.stopPropagation()" title="Supprimer">🗑️</button>
+          </div>
+        </div>
+
+        <div class="create-folder-input subfolder-input" *ngIf="showCreateInput[folder._id]">
+          <input
+            type="text"
+            [(ngModel)]="newFolderName"
+            placeholder="Nom du sous-dossier"
+            (keyup.enter)="createFolder(folder._id)"
+            (keyup.escape)="hideCreateFolderInput(folder._id)">
+          <button class="btn btn-xs btn-success" (click)="createFolder(folder._id)">✓</button>
+          <button class="btn btn-xs btn-secondary" (click)="hideCreateFolderInput(folder._id)">✗</button>
+        </div>
+
+        <div class="tree-children" *ngIf="expandedFolders.has(folder._id)">
+          <div class="folder-file-list" *ngIf="getFileCount(folder._id) > 0">
+            <div class="folder-file-item" *ngFor="let file of getFilesInFolder(folder._id)">
+              <span class="file-type-icon">{{ getFileIcon(file) }}</span>
+              <span class="file-name">{{ file.originalName }}</span>
+              <span class="file-date">{{ formatFileDate(file.createdAt) }}</span>
+            </div>
+          </div>
+          <ng-container *ngFor="let child of getChildFolders(folder._id)">
+            <ng-container *ngTemplateOutlet="folderNode; context:{ $implicit: child, depth: depth + 1 }"></ng-container>
+          </ng-container>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div>

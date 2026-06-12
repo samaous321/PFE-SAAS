@@ -1,0 +1,243 @@
+<div class="tenant-details-overlay">
+  <section class="tenant-details-modal" (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()" (touchstart)="$event.stopPropagation()" tabindex="-1" (keydown)="$event.stopPropagation()">
+    <header class="tenant-details-header">
+      <div>
+        <span class="section-kicker">Tenant dashboard</span>
+        <h3>{{ details?.quota?.tenantName || selectedTenant?.name || 'Tenant details' }}</h3>
+        <p>
+          {{ details?.quota?.subscriptionPlan | uppercase }} ·
+          {{ details?.quota?.quotaStatus || 'healthy' }} ·
+          {{ formatDateLabel(details?.generatedAt) }}
+        </p>
+      </div>
+
+      <button type="button" class="icon-button secondary" (click)="close.emit()" title="Close details">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M18 6L6 18" />
+          <path d="M6 6l12 12" />
+        </svg>
+      </button>
+    </header>
+
+    <div *ngIf="loading" class="loading-card details-loading">Loading tenant details...</div>
+
+    <ng-container *ngIf="!loading && details as detail">
+      <div class="detail-kpis">
+        <article class="detail-kpi highlight">
+          <span>Consumption</span>
+          <strong>{{ formatPercent(detail.quota.storageUsedPercent, 1) }}</strong>
+          <small>{{ formatBytes(detail.quota.storageUsed || 0) }} used</small>
+        </article>
+        <article class="detail-kpi">
+          <span>Plan</span>
+          <strong>{{ detail.quota.subscriptionPlan | uppercase }}</strong>
+          <small>Current tenant tier</small>
+        </article>
+        <article class="detail-kpi">
+          <span>Remaining</span>
+          <strong>{{ detail.quota.remainingStorageBytes !== null ? formatBytes(detail.quota.remainingStorageBytes) : '∞' }}</strong>
+          <small>Before saturation</small>
+        </article>
+        <article class="detail-kpi">
+          <span>Forecast</span>
+          <strong>{{ detail.saturationForecast.monthsRemaining !== null ? detail.saturationForecast.monthsRemaining + ' mo' : 'Stable' }}</strong>
+          <small>{{ detail.saturationForecast.averageMonthlyGrowthLabel }}</small>
+        </article>
+      </div>
+
+      <div class="detail-grid">
+        <div class="chart-row">
+          <article class="detail-card">
+          <div class="detail-card-head">
+            <div>
+              <h4>Monthly consumption</h4>
+              <p>Storage growth over the last 12 months.</p>
+            </div>
+            <span class="comparison-pill">12 months</span>
+          </div>
+
+          <ng-container *ngIf="detail.usageSeries.length > 0 && hasUsageData; else noMonthlyUsage">
+            <div class="chart-shell monthly-chart-shell">
+              <canvas baseChart
+                [data]="monthlyUsageChartData"
+                [type]="'line'"
+                [options]="monthlyUsageChartOptions"
+              ></canvas>
+            </div>
+          </ng-container>
+
+          <ng-template #noMonthlyUsage>
+            <div class="empty-panel details-empty">
+              <strong>No monthly usage available</strong>
+              <p>Verify that the tenant has activity during the last 12 months.</p>
+            </div>
+          </ng-template>
+        </article>
+
+        <article class="detail-card">
+          <div class="detail-card-head">
+            <div>
+              <h4>Usage breakdown</h4>
+              <p>Visualize quota pressure and remaining headroom.</p>
+            </div>
+            <span class="comparison-pill">{{ detail.quota.storageLimit ? 'Quota' : 'Unlimited' }}</span>
+          </div>
+
+          <div class="chart-shell donut-chart-shell">
+            <canvas baseChart
+              [data]="usageBreakdownChartData"
+              [type]="'doughnut'"
+              [options]="usageBreakdownChartOptions"
+            ></canvas>
+          </div>
+
+          <div class="breakdown-legend">
+            <span><i class="legend-dot used"></i> Used</span>
+            <span><i class="legend-dot remaining"></i> Remaining</span>
+          </div>
+        </article>
+
+        <article class="detail-card">
+          <div class="detail-card-head">
+            <div>
+              <h4>Top users</h4>
+              <p>Current page consumption and quota pressure.</p>
+            </div>
+            <span class="comparison-pill">{{ totalUsers }} total</span>
+          </div>
+
+          <div class="chart-shell top-users-chart-shell" *ngIf="detail.users.length > 0; else noUsersInDetails">
+            <canvas baseChart
+              [data]="topUsersChartData"
+              [type]="'bar'"
+              [options]="topUsersChartOptions"
+            ></canvas>
+          </div>
+
+          <ng-template #noUsersInDetails>
+            <div class="empty-panel details-empty">
+              <strong>No users</strong>
+              <p>This tenant does not have users to analyze.</p>
+            </div>
+          </ng-template>
+        </article>
+
+      </div>
+
+        <article class="detail-card detail-table-card">
+          <div class="detail-card-head table-head-row">
+            <div>
+              <h4>User usage details</h4>
+              <p>Search, sort and browse tenant users with server-side pagination.</p>
+            </div>
+            <div class="table-head-actions">
+              <div class="search-field">
+                <span class="search-icon">⌕</span>
+                <input
+                  type="text"
+                  [value]="search"
+                  (input)="onSearch($any($event.target).value)"
+                  (keydown.enter)="$event.preventDefault(); $event.stopPropagation()"
+                  placeholder="Filter users..."
+                  aria-label="Filter tenant users"
+                />
+              </div>
+              <div class="limit-select">
+                <label>
+                  Page size
+                  <select [value]="limit" (change)="onLimitChange($any($event.target).value)">
+                    <option *ngFor="let size of userPageSizes" [value]="size">{{ size }}</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="detail.users.length > 0" class="detail-table-wrapper">
+            <table class="detail-table">
+              <thead>
+                <tr>
+                  <th>
+                    <button type="button" class="sort-button" (click)="toggleSort('name')">
+                      User {{ getSortIndicator('name') }}
+                    </button>
+                  </th>
+                  <th>Role</th>
+                <th>Status</th>
+                  <th>
+                    <button type="button" class="sort-button" (click)="toggleSort('storageUsedBytes')">
+                      Storage {{ getSortIndicator('storageUsedBytes') }}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="sort-button" (click)="toggleSort('storageUsedPercent')">
+                      % Used {{ getSortIndicator('storageUsedPercent') }}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="sort-button" (click)="toggleSort('filesCount')">
+                      Files {{ getSortIndicator('filesCount') }}
+                    </button>
+                  </th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of detail.users">
+                  <td>
+                    <strong>{{ user.name || user.email }}</strong>
+                    <small>{{ user.email }}</small>
+                  </td>
+                  <td>
+                    <span class="role-chip">{{ user.role || 'user' | uppercase }}</span>
+                  </td>
+                  <td>
+                    <span class="status-pill" [ngClass]="getStatusClass(user.storageUsedPercent)">
+                      {{ getUsageStatusText(user.storageUsedPercent) }}
+                    </span>
+                  </td>
+                  <td>{{ formatBytes(user.storageUsedBytes) }}</td>
+                  <td>{{ formatPercent(user.storageUsedPercent, 0) }}</td>
+                  <td>{{ user.filesCount || 0 }}</td>
+                  <td>{{ user.remainingStorageBytes !== null ? formatBytes(user.remainingStorageBytes) : '∞' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="detail-table-footer" *ngIf="totalPages > 1">
+            <button type="button" class="pagination-btn" (click)="onPageChange(page - 1)" [disabled]="page <= 1">Previous</button>
+            <span class="pagination-info">Page {{ currentPageLabel }}</span>
+            <button type="button" class="pagination-btn" (click)="onPageChange(page + 1)" [disabled]="page >= totalPages">Next</button>
+          </div>
+        </article>
+
+        <article class="detail-card forecast-card">
+          <div class="detail-card-head">
+            <div>
+              <h4>Saturation forecast</h4>
+              <p>Estimated date based on the current growth trend.</p>
+            </div>
+          </div>
+          <div class="forecast-metrics">
+            <div>
+              <span>Trend</span>
+              <strong>{{ detail.saturationForecast.trend | uppercase }}</strong>
+            </div>
+            <div>
+              <span>Estimated full date</span>
+              <strong>{{ detail.saturationForecast.estimatedFullDate ? formatDateLabel(detail.saturationForecast.estimatedFullDate) : 'N/A' }}</strong>
+            </div>
+            <div>
+              <span>Average growth</span>
+              <strong>{{ detail.saturationForecast.averageMonthlyGrowthLabel }}</strong>
+            </div>
+          </div>
+          <div class="progress-shell large">
+            <span [style.width.%]="detail.quota.storageUsedPercent || 0"></span>
+          </div>
+        </article>
+      </div>
+    </ng-container>
+  </section>
+</div>

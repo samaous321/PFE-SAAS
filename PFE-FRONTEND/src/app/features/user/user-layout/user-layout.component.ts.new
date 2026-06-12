@@ -1,0 +1,436 @@
+import { Component, inject } from '@angular/core';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AuthStorageService } from '../../../core/services/auth-storage.service';
+import { UserApiService } from '../../../core/services/user-api.service';
+
+@Component({
+  standalone: true,
+  selector: 'app-user-layout',
+  imports: [CommonModule, RouterOutlet, RouterLink],
+  template: `
+    <div class="user-layout">
+      <header class="user-header">
+        <div class="header-content">
+          <div class="header-left">
+            <div class="logo" (click)="goHome()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 32px; height: 32px;">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                <polyline points="13 2 13 9 20 9"></polyline>
+              </svg>
+              <span>PFE Secure</span>
+            </div>
+          </div>
+          <div class="header-right">
+            <span class="user-info">👤 {{ getUserFullName() }}</span>
+            <div class="user-menu">
+              <div class="dropdown">
+                <div class="avatar" (click)="menuOpen = !menuOpen">{{ getInitials() }}</div>
+                <ul class="dropdown-menu" [class.active]="menuOpen">
+                  <li><a href="javascript:void(0)">Profil</a></li>
+                  <li><a href="javascript:void(0)">Paramètres</a></li>
+                  <li><button type="button" (click)="logout()" class="danger">Déconnexion</button></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="user-container">
+        <aside class="user-sidebar">
+          <!-- SECTION: MON ESPACE UTILISATEUR -->
+          <nav class="sidebar-section">
+            <h3 class="section-title">📁 Mon Espace</h3>
+            <ul class="nav-list">
+              <li><a routerLink="/user/dashboard" routerLinkActive="active" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Tableau de Bord</span>
+              </a></li>
+              <li><a routerLink="/user/files" routerLinkActive="active" class="nav-item">
+                <span class="nav-icon">📁</span>
+                <span class="nav-label">Mes Fichiers</span>
+              </a></li>
+              <li><a routerLink="/user/share-history" routerLinkActive="active" class="nav-item">
+                <span class="nav-icon">📤</span>
+                <span class="nav-label">Historique Partages</span>
+              </a></li>
+              <li><a routerLink="/user/stats" routerLinkActive="active" class="nav-item">
+                <span class="nav-icon">📈</span>
+                <span class="nav-label">Statistiques</span>
+              </a></li>
+              <li><a routerLink="/user/complaints" routerLinkActive="active" class="nav-item">
+                <span class="nav-icon">🧾</span>
+                <span class="nav-label">Mes Réclamations</span>
+              </a></li>
+            </ul>
+          </nav>
+
+          <!-- SECTION: ADMINISTRATION TENANT (visible pour tenant_admin) -->
+          <ng-container *ngIf="isTenantAdmin()">
+            <hr class="section-divider">
+
+            <nav class="sidebar-section admin-section">
+              <h3 class="section-title admin-title">🏢 Administration Tenant</h3>
+              
+              <!-- Sous-section: Gestion -->
+              <div class="subsection">
+                <h4 class="subsection-title">Gestion</h4>
+                <ul class="nav-list">
+                  <li><a routerLink="/tenant-admin/dashboard" routerLinkActive="active" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Tableau de Bord Admin</span>
+                  </a></li>
+                  <li><a routerLink="/tenant-admin/users" routerLinkActive="active" class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-label">Utilisateurs</span>
+                  </a></li>
+                </ul>
+              </div>
+
+              <!-- Sous-section: Supervision -->
+              <div class="subsection">
+                <h4 class="subsection-title">Supervision</h4>
+                <ul class="nav-list">
+                  <!-- Réclamations admin réservées au Super Admin — pas de lien tenant-admin -->
+                  <li><a routerLink="/tenant-admin/share-history" routerLinkActive="active" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Activité Partages</span>
+                  </a></li>
+                </ul>
+              </div>
+            </nav>
+          </ng-container>
+        </aside>
+
+        <main class="user-main">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
+
+      <footer class="user-footer">
+        <p>&copy; 2024 PFE Secure. Tous vos fichiers sont chiffrés de bout en bout avec AES-256.</p>
+      </footer>
+    </div>
+  `,
+  styles: [`
+    .user-layout {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: #f8f9fa;
+    }
+
+    .user-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+
+    .logo:hover {
+      opacity: 0.8;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .user-info {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .user-container {
+      display: flex;
+      flex: 1;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+      gap: 0;
+    }
+
+    .user-sidebar {
+      width: 280px;
+      background: white;
+      border-right: 1px solid #e0e0e0;
+      padding: 2rem 1rem;
+      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+      overflow-y: auto;
+      max-height: calc(100vh - 80px);
+    }
+
+    .sidebar-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #333;
+      padding: 0.75rem 1rem;
+      margin: 0 0 1rem;
+      border-left: 3px solid #667eea;
+      padding-left: 0.75rem;
+    }
+
+    .admin-title {
+      border-left-color: #e74c3c;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin: 1.5rem 0;
+    }
+
+    .admin-section .subsection {
+      margin-bottom: 1.5rem;
+    }
+
+    .subsection-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #666;
+      padding: 0.5rem 1rem;
+      margin: 0 0 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      color: #333;
+      text-decoration: none;
+      transition: all 0.3s;
+      border-left: 3px solid transparent;
+      margin-bottom: 0.25rem;
+    }
+
+    .nav-item:hover {
+      background-color: #f5f5f5;
+      border-left-color: #667eea;
+      padding-left: 0.75rem;
+    }
+
+    .nav-item.active {
+      background-color: #f0f0ff;
+      color: #667eea;
+      border-left-color: #667eea;
+      font-weight: 600;
+    }
+
+    .admin-section .nav-item.active {
+      background-color: #ffe8e8;
+      color: #e74c3c;
+      border-left-color: #e74c3c;
+    }
+
+    .nav-icon {
+      font-size: 1.1rem;
+      min-width: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-label {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .user-main {
+      flex: 1;
+      padding: 2rem;
+      background: #f8f9fa;
+      overflow-y: auto;
+    }
+
+    .user-footer {
+      background-color: #f5f5f5;
+      color: #666;
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid #e0e0e0;
+      font-size: 0.9rem;
+    }
+
+    .user-menu {
+      position: relative;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+
+    .avatar:hover {
+      background-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 50px;
+      right: 0;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      min-width: 150px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: none;
+      z-index: 100;
+    }
+
+    .dropdown-menu.active {
+      display: block;
+    }
+
+    .dropdown-menu li {
+      margin: 0;
+    }
+
+    .dropdown-menu a,
+    .dropdown-menu button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      color: #333;
+      text-decoration: none;
+      border: none;
+      background: none;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 0.3s;
+    }
+
+    .dropdown-menu a:hover,
+    .dropdown-menu button:hover {
+      background-color: #f5f5f5;
+    }
+
+    .dropdown-menu .danger {
+      color: #e74c3c;
+    }
+
+    .dropdown-menu .danger:hover {
+      background-color: #ffe8e8;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .user-sidebar {
+        width: 200px;
+      }
+
+      .section-title {
+        font-size: 0.8rem;
+      }
+
+      .nav-label {
+        display: none;
+      }
+
+      .nav-item:hover .nav-label {
+        display: inline;
+      }
+    }
+  `]
+})
+export class UserLayoutComponent {
+  private readonly authStorage = inject(AuthStorageService);
+  private readonly api = inject(UserApiService);
+  private readonly router = inject(Router);
+
+  menuOpen = false;
+
+  goHome(): void {
+    this.router.navigate(['/user/files']);
+  }
+
+  getInitials(): string {
+    const session = this.authStorage.getSession();
+    if (session?.firstName && session?.lastName) {
+      return (session.firstName[0] + session.lastName[0]).toUpperCase();
+    }
+    return session?.email?.[0]?.toUpperCase() || 'U';
+  }
+
+  getUserFullName(): string {
+    const session = this.authStorage.getSession();
+    if (session?.firstName && session?.lastName) {
+      return `${session.firstName} ${session.lastName}`;
+    }
+    if (session?.email) {
+      return session.email.split('@')[0];
+    }
+    return 'Utilisateur';
+  }
+
+  isTenantAdmin(): boolean {
+    return this.authStorage.isTenantAdmin();
+  }
+
+  logout(): void {
+    this.api.logout().subscribe({
+      next: () => {
+        this.authStorage.clear();
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.authStorage.clear();
+        this.router.navigate(['/login']);
+      }
+    });
+  }
+}

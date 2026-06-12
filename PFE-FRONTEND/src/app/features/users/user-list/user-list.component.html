@@ -1,0 +1,40 @@
+<section class="users-page card">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Gestion</p>
+      <h2>Utilisateurs du tenant</h2>
+      <p class="helper">La route backend `/users` renvoie uniquement les utilisateurs du tenant connecté.</p>
+    </div>
+
+    <a routerLink="/users/new" class="btn btn-primary" *ngIf="isAdmin">Nouvel utilisateur</a>
+  </div>
+
+  <p class="error" *ngIf="error">{{ error }}</p>
+  <p class="helper" *ngIf="loading">Chargement...</p>
+
+  <div class="table" *ngIf="!loading && users.length">
+    <div class="row head">
+      <span>Nom</span>
+      <span>Email</span>
+      <span>Role</span>
+      <span>Status</span>
+      <span>Actions</span>
+    </div>
+
+    <div class="row" *ngFor="let user of users">
+      <span>{{ user.firstName }} {{ user.lastName }}</span>
+      <span>{{ user.email }}</span>
+      <span>{{ user.role || 'user' }}</span>
+      <span>
+        <span class="status" [class.active]="user.status === 'active'">{{ user.status || 'active' }}</span>
+      </span>
+      <span class="row-actions">
+        <a *ngIf="isAdmin && user._id" [routerLink]="['/users', user._id, 'edit']" class="btn btn-secondary">Modifier</a>
+        <button type="button" class="btn btn-danger" (click)="remove(user)" *ngIf="isAdmin">Supprimer</button>
+        <span class="helper" *ngIf="!isAdmin">Lecture seule</span>
+      </span>
+    </div>
+  </div>
+
+  <p class="helper" *ngIf="!loading && !users.length && !error">Aucun utilisateur trouvé.</p>
+</section>

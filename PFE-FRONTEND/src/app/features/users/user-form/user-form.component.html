@@ -1,0 +1,49 @@
+<section class="card form-page">
+  <p class="eyebrow">Utilisateur</p>
+  <h2>{{ userId ? 'Modifier un utilisateur' : 'Créer un utilisateur' }}</h2>
+  <p class="helper">Le backend protège les champs role, status, verified et tenantId à la mise à jour.</p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="grid">
+    <label class="field">
+      <span>Tenant ID</span>
+      <input type="text" formControlName="tenantId">
+    </label>
+
+    <div class="two-cols">
+      <label class="field">
+        <span>Prénom</span>
+        <input type="text" formControlName="firstName">
+      </label>
+
+      <label class="field">
+        <span>Nom</span>
+        <input type="text" formControlName="lastName">
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Email</span>
+      <input type="email" formControlName="email">
+    </label>
+
+    <label class="field">
+      <span>Téléphone</span>
+      <input type="text" formControlName="phoneNumber">
+    </label>
+
+    <label class="field">
+      <span>Nouveau mot de passe</span>
+      <input type="password" formControlName="password" placeholder="laisser vide pour ne pas changer">
+    </label>
+
+    <p class="success" *ngIf="success">{{ success }}</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <div class="buttons">
+      <button class="btn btn-primary" type="submit" [disabled]="loading || saving">
+        {{ saving ? 'Enregistrement...' : 'Enregistrer' }}
+      </button>
+      <a routerLink="/users" class="btn btn-secondary">Retour</a>
+    </div>
+  </form>
+</section>

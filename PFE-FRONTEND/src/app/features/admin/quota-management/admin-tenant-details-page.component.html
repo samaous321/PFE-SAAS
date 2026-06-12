@@ -1,0 +1,322 @@
+<div class="tenant-details-page">
+
+
+  <ng-container *ngIf="details; else loadingState">
+    <section class="overview-section">
+      <div class="kpi-grid">
+        <article class="kpi-card" [class.status-critical]="(details.quota.storageUsedPercent ?? 0) >= 90" [class.status-warning]="(details.quota.storageUsedPercent ?? 0) >= 80 && (details.quota.storageUsedPercent ?? 0) < 90">
+          <div class="kpi-header">
+            <span class="kpi-icon">📦</span>
+            <span class="kpi-label">Stockage utilisé</span>
+          </div>
+          <div class="kpi-content">
+            <strong class="kpi-value">{{ formatBytes(details.quota.storageUsed) }}</strong>
+            <span class="kpi-percent">{{ formatPercent(details.quota.storageUsedPercent, 1) }}</span>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="details.quota.storageUsedPercent || 0"></div>
+            </div>
+            <span class="progress-text">{{ formatBytes(details.quota.remainingStorageBytes) }} disponible</span>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-icon">📊</span>
+            <span class="kpi-label">Quota total</span>
+          </div>
+          <div class="kpi-content">
+            <strong class="kpi-value">{{ details.quota.storageLimit === null ? '∞' : formatBytes(details.quota.storageLimit) }}</strong>
+            <span class="kpi-subtitle">{{ details.quota.subscriptionPlan | uppercase }}</span>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-icon">👥</span>
+            <span class="kpi-label">Utilisateurs</span>
+          </div>
+          <div class="kpi-content">
+            <strong class="kpi-value">{{ details.quota.usersCount }}</strong>
+            <span class="kpi-subtitle">{{ details.usersTotal }} actifs</span>
+          </div>
+        </article>
+
+        <article class="kpi-card " [class.status-critical]="(details.quota.storageUsedPercent ?? 0) >= 90" [class.status-warning]="(details.quota.storageUsedPercent ?? 0) >= 80 && (details.quota.storageUsedPercent ?? 0) < 90" [class.status-healthy]="(details.quota.storageUsedPercent ?? 0) < 80">
+          <div class="kpi-header">
+            <span class="kpi-icon">{{ getUsageStatusIcon(details.quota.storageUsedPercent) }}</span>
+            <span class="kpi-label">Statut</span>
+          </div>
+          <div class="kpi-content">
+            <strong class="kpi-value">{{ getUsageStatusText(details.quota.storageUsedPercent) }}</strong>
+          </div>
+        </article>
+      </div>
+    </section>
+<section class="forecast-section" *ngIf="details?.saturationForecast && (details.saturationForecast.monthsRemaining !== undefined || details.saturationForecast.estimatedFullDate || details.saturationForecast.averageMonthlyGrowthBytes)">
+      <h2 class="section-title">Prévisions</h2>
+      <div class="forecast-grid">
+        <article class="forecast-card" *ngIf="details?.saturationForecast?.monthsRemaining !== undefined || details?.saturationForecast?.monthsRemaining !== null">
+          <div class="forecast-icon">⏱️</div>
+          <h4>Temps avant saturation</h4>
+          <p class="forecast-value">{{ details.saturationForecast.monthsRemaining === null || details.saturationForecast.monthsRemaining === undefined ? 'N/A' : details.saturationForecast.monthsRemaining + ' mois' }}</p>
+          <p class="forecast-meta">Avec la tendance actuelle</p>
+        </article>
+        <article class="forecast-card" *ngIf="details?.saturationForecast?.estimatedFullDate">
+          <div class="forecast-icon">📅</div>
+          <h4>Date estimée</h4>
+          <p class="forecast-value">{{ formatDateLabel(details.saturationForecast.estimatedFullDate) }}</p>
+          <p class="forecast-meta">Si la croissance continue</p>
+        </article>
+        <article class="forecast-card" *ngIf="details?.saturationForecast?.averageMonthlyGrowthBytes">
+          <div class="forecast-icon">📈</div>
+          <h4>Croissance mensuelle</h4>
+          <p class="forecast-value">{{ formatBytes(details.saturationForecast.averageMonthlyGrowthBytes) }}</p>
+          <p class="forecast-meta">Moyenne sur la période</p>
+        </article>
+        <article class="forecast-card" *ngIf="details?.activitySummary?.lastUploadDate">
+          <div class="forecast-icon">⬆️</div>
+          <h4>Dernier upload</h4>
+          <p class="forecast-value">{{ formatDateLabel(details.activitySummary.lastUploadDate) }}</p>
+          <p class="forecast-meta">Dernière activité</p>
+        </article>
+      </div>
+    </section>
+    <section class="usage-section">
+      <div class="section-header">
+        <h2 class="section-title">Analyse d'utilisation</h2>
+        <div class="chart-toolbar">
+          <div class="range-picker">
+            <button
+              *ngFor="let option of rangeOptions"
+              type="button"
+              class="range-button"
+              [class.active]="range === option.key"
+              (click)="onRangeChange(option.key)"
+              [title]="'Afficher ' + option.label"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+          <label class="chart-type-label">
+            <select class="chart-type-select" [(ngModel)]="chartType" (ngModelChange)="onChartTypeChange($event)" title="Type de graphique">
+              <option value="line">📈 Ligne</option>
+              <option value="bar">📊 Barre</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <article class="chart-card">
+          <div class="chart-header">
+            <h3>Évolution de stockage</h3>
+            <p *ngIf="details?.activitySummary?.averageDailyUploadBytes" class="chart-subtitle">
+              Moyenne : <strong>{{ formatBytes(details.activitySummary.averageDailyUploadBytes) }}/jour</strong>
+            </p>
+          </div>
+          <div class="chart-wrapper">
+            <canvas baseChart [data]="monthlyUsageChartData" [options]="monthlyUsageChartOptions" [type]="chartType"></canvas>
+          </div>
+        </article>
+
+        <div class="charts-sidebar">
+          <article class="chart-card compact">
+            <div class="chart-header">
+              <h3>Répartition quota</h3>
+            </div>
+            <div class="donut-chart-wrapper">
+              <canvas baseChart [data]="usageBreakdownChartData" [options]="usageBreakdownChartOptions" type="doughnut"></canvas>
+              <div class="donut-center">
+                <strong>{{ formatPercent(details.quota.storageUsedPercent, 0) }}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="chart-card compact">
+            <div class="chart-header">
+              <h3>Top utilisateurs</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas baseChart [data]="topUsersChartData" [options]="topUsersChartOptions" type="bar"></canvas>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    
+
+    <section class="users-section">
+      <div class="section-toolbar">
+        <div class="search-group">
+          <span class="search-icon">⌕</span>
+          <input
+            type="search"
+            [(ngModel)]="search"
+            (ngModelChange)="onSearch($event)"
+            placeholder="Rechercher un utilisateur..."
+            aria-label="Rechercher un utilisateur"
+          />
+        </div>
+        <div class="select-group">
+          <label>
+            <span>Afficher</span>
+            <select [(ngModel)]="limit" (ngModelChange)="onLimitChange($event)">
+              <option value="5">5</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Email</th>
+              <th>Rôle</th>
+              <th>Status</th>
+              <th (click)="toggleSort('storageUsedBytes')" class="sortable">
+                Stockage {{ getSortIndicator('storageUsedBytes') }}
+              </th>
+              <th>Quota</th>
+              <th>% utilisé</th>
+              <th>Détails</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of details.users">
+              <td>{{ user.name || '—' }}</td>
+              <td>{{ user.email }}</td>
+              <td>
+                <span class="role-chip" [ngClass]="getUserRoleClass(user.role)">
+                  {{ (user.role || 'USER') | uppercase }}
+                </span>
+              </td>
+              <td>
+                <span class="user-status">{{ user.status || 'inconnu' }}</span>
+              </td>
+              <td>{{ formatBytes(user.storageUsedBytes) }}</td>
+              <td>{{ user.storageLimitBytes === null ? 'Illimité' : formatBytes(user.storageLimitBytes) }}</td>
+              <td>{{ formatPercent(user.storageUsedPercent, 1) }}</td>
+              <td class="table-action-cell">
+                <button
+                  
+                  type="button"
+                  class="icon-button tertiary"
+                  (click)="openUserDetail(user)"
+                  title="Voir les détails"
+                  [attr.aria-label]="'Voir les détails de ' + (user.name || user.email)"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path d="M2.5 12s4-8 9.5-8 9.5 8 9.5 8-4 8-9.5 8-9.5-8-9.5-8z" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pagination-actions" *ngIf="totalPages > 1">
+          <button type="button" class="icon-button secondary" (click)="onPageChange(1)" [disabled]="page === 1">Première</button>
+          <button type="button" class="icon-button secondary" (click)="onPageChange(page - 1)" [disabled]="page === 1">Préc.</button>
+          <span class="page-label">Page {{ page }} / {{ totalPages }}</span>
+          <button type="button" class="icon-button secondary" (click)="onPageChange(page + 1)" [disabled]="page === totalPages">Suiv.</button>
+          <button type="button" class="icon-button secondary" (click)="onPageChange(totalPages)" [disabled]="page === totalPages">Dernière</button>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+
+    <div class="user-detail-modal-backdrop" *ngIf="userDetailModalOpen">
+      <div class="user-detail-modal">
+        <header class="modal-header">
+          <div>
+            <span class="section-kicker">Détails Utilisateur</span>
+            <h3>{{ selectedUserDetails?.name || selectedUserDetails?.email }}</h3>
+            <p>{{ selectedUserDetails?.role?.toUpperCase() || 'USER' }} · {{ selectedUserDetails?.status || 'Statut inconnu' }}</p>
+          </div>
+          <button type="button" class="icon-button close-button" (click)="closeUserDetail()" aria-label="Fermer la fenêtre">
+            ✕
+          </button>
+        </header>
+
+        <div class="modal-body">
+          <div class="modal-summary-grid">
+            <article class="detail-metric">
+              <span>Stockage utilisé</span>
+              <strong>{{ formatBytes(selectedUserDetails?.storageUsedBytes) }}</strong>
+            </article>
+            <article class="detail-metric">
+              <span>Quota utilisateur</span>
+              <strong>{{ selectedUserDetails?.storageLimitBytes === null ? 'Illimité' : formatBytes(selectedUserDetails?.storageLimitBytes) }}</strong>
+            </article>
+            <article class="detail-metric">
+              <span>Espace restant</span>
+              <strong>
+                {{ selectedUserDetails?.storageLimitBytes === null ? 'Illimité' : formatBytes((selectedUserDetails?.storageLimitBytes || 0) - (selectedUserDetails?.storageUsedBytes || 0)) }}
+              </strong>
+            </article>
+            <article class="detail-metric">
+              <span>Utilisation</span>
+              <strong>{{ formatPercent(selectedUserDetails?.storageUsedPercent, 1) }}</strong>
+            </article>
+          </div>
+
+          <div class="modal-chart-grid">
+            <article class="chart-card compact">
+              <div class="chart-header">
+                <h4>Répartition</h4>
+              </div>
+              <div class="chart-wrapper small-chart">
+                <canvas
+                  baseChart
+                  [data]="userDetailDonutData"
+                  [options]="userDetailDonutOptions"
+                  type="doughnut"
+                ></canvas>
+              </div>
+            </article>
+
+            <article class="chart-card compact">
+              <div class="chart-header">
+                <h4>Tendance</h4>
+              </div>
+              <div class="chart-wrapper small-chart">
+                <canvas
+                  baseChart
+                  [data]="userDetailTrendData"
+                  [options]="userDetailTrendOptions"
+                  type="line"
+                ></canvas>
+              </div>
+            </article>
+          </div>
+
+          <div class="modal-footer">
+            <div class="footer-summary">
+              <span>Estimation</span>
+              <strong>{{ selectedUserDetails ? getUserQuotaEstimate(selectedUserDetails) : 'N/A' }}</strong>
+            </div>
+            <p>Analyse premium de l&apos;utilisateur avec un aperçu du quota, du stockage et des tendances.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <ng-template #loadingState>
+    <div class="empty-state">
+      <div class="empty-state-icon">📊</div>
+      <h2 *ngIf="loading">Chargement des détails...</h2>
+      <h2 *ngIf="!loading">Aucun détail disponible</h2>
+      <p *ngIf="loading">Veuillez patienter, nous récupérons les informations du tenant.</p>
+      <p *ngIf="!loading">Il n'y a pas d'informations de quota disponibles pour ce tenant. Vérifiez que le tenant existe.</p>
+    </div>
+  </ng-template>
+</div>

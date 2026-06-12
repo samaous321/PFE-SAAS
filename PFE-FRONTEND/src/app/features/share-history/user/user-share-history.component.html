@@ -1,0 +1,508 @@
+<div class="share-history-container">
+  <header class="history-header">
+    <h1>Historique Utilisateur</h1>
+    <p>Deux vues séparées avec filtres indépendants: activité globale et historique de partage.</p>
+  </header>
+
+  <section class="stats-container">
+    <article class="stat-card">
+      <span class="stat-icon">📤</span>
+      <div>
+        <p>Partages</p>
+        <strong>{{ stats.totalShares }}</strong>
+      </div>
+    </article>
+    <article class="stat-card">
+      <span class="stat-icon">✅</span>
+      <div>
+        <p>Actifs</p>
+        <strong>{{ stats.activeShares }}</strong>
+      </div>
+    </article>
+    <article class="stat-card">
+      <span class="stat-icon">⬇️</span>
+      <div>
+        <p>Téléchargements</p>
+        <strong>{{ stats.totalDownloads }}</strong>
+      </div>
+    </article>
+    <article class="stat-card">
+      <span class="stat-icon">👁️</span>
+      <div>
+        <p>Consultations</p>
+        <strong>{{ stats.totalViews }}</strong>
+      </div>
+    </article>
+    <article class="stat-card">
+      <span class="stat-icon">🚫</span>
+      <div>
+        <p>Révoqués</p>
+        <strong>{{ stats.revokedShares }}</strong>
+      </div>
+    </article>
+  </section>
+
+  <section class="tab-window" *ngIf="!loading; else loadingState">
+    <div class="tab-bar">
+      <button type="button" class="tab-btn" [class.active]="activeTab === 'activity'" (click)="setActiveTab('activity')">Journal de mes activités</button>
+      <button type="button" class="tab-btn" [class.active]="activeTab === 'history'" (click)="setActiveTab('history')">Historique de partage</button>
+    </div>
+
+    <div class="tab-panel" *ngIf="activeTab === 'activity'">
+      <div class="panel-head compact">
+        <div>
+          <h2>Journal de mes activités</h2>
+          <span>{{ filteredActivityFeed.length }} résultat(s)</span>
+        </div>
+        <button type="button" class="panel-toggle-btn" (click)="toggleActivityFilters()">
+          <span>{{ showActivityFilters ? '▾' : '▸' }}</span>
+          {{ showActivityFilters ? 'Masquer les filtres' : 'Afficher les filtres' }}
+        </button>
+      </div>
+
+      <form *ngIf="showActivityFilters" [formGroup]="activityFilterForm" class="filters-grid activity-filters compact-filters">
+        <div class="filter-item">
+          <label>Action</label>
+          <select class="sh-select" formControlName="action">
+            <option value="">Toutes</option>
+            <option value="login">Connexion</option>
+            <option value="logout">Déconnexion</option>
+            <option value="created">Partage créé</option>
+            <option value="create_share">Partage créé (API)</option>
+            <option value="revoked">Partage révoqué</option>
+            <option value="revoke_share">Révocation</option>
+            <option value="accessed_download">Téléchargement</option>
+            <option value="accessed_view">Consultation</option>
+            <option value="download">Téléchargement fichier</option>
+            <option value="download_shared">Téléchargement partagé</option>
+            <option value="create_complaint">Réclamation</option>
+            <option value="hide_received_share">Masquage partage</option>
+            <option value="restore_received_share">Restauration partage</option>
+            <option value="file_settings_updated">Fichier mis à jour</option>
+            <option value="file_deleted">Fichier supprimé</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Type partage</label>
+          <select class="sh-select" formControlName="shareType">
+            <option value="">Tous</option>
+            <option value="direct">Direct</option>
+            <option value="link">Lien</option>
+            <option value="public">Public</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Type ressource</label>
+          <select class="sh-select" formControlName="resourceType">
+            <option value="">Toutes</option>
+            <option value="share">Partage</option>
+            <option value="file">Fichier</option>
+            <option value="complaint">Réclamation</option>
+            <option value="auth">Authentification</option>
+            <option value="activity">Système</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Acteur</label>
+          <input class="sh-search__input" type="text" formControlName="actor" placeholder="email...">
+        </div>
+        <div class="filter-item">
+          <label>Nom fichier</label>
+          <input class="sh-search__input" type="text" formControlName="fileName" placeholder="Rechercher...">
+        </div>
+        <div class="filter-item">
+          <label>Destinataire</label>
+          <input class="sh-search__input" type="text" formControlName="recipientEmail" placeholder="Email...">
+        </div>
+        <div class="filter-item">
+          <label>Type fichier</label>
+          <input class="sh-search__input" type="text" formControlName="mimeType" placeholder="pdf, image...">
+        </div>
+        <div class="filter-item">
+          <label>De</label>
+          <input class="sh-select" type="date" formControlName="startDate">
+        </div>
+        <div class="filter-item">
+          <label>À</label>
+          <input class="sh-select" type="date" formControlName="endDate">
+        </div>
+        <div class="filter-item actions">
+          <button type="button" class="sh-qf-chip sh-qf-chip--outline" (click)="resetActivityFilters()">Réinitialiser</button>
+        </div>
+      </form>
+
+      <div class="table-wrapper activity-table-wrapper" *ngIf="filteredActivityFeed.length; else noActivity">
+        <table class="history-table activity-table">
+          <thead>
+            <tr>
+              <th>Activité</th>
+              <th>Nom Fichier</th>
+              <th>Type Fichier</th>
+              <th>Partage</th>
+              <th>Destinataire</th>
+              <th>Date</th>
+              <th>Détails</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let activity of pagedActivityFeed; let i = index" [class.striped]="i % 2 === 1" class="activity-row" (click)="onActivityClick(activity)">
+              <td class="activity-cell activity-cell--main">
+                <span class="activity-icon activity-icon--table">{{ activity.icon }}</span>
+                <div class="activity-line activity-line--table">
+                  <strong>{{ activity.actionLabel }}</strong>
+                </div>
+              </td>
+              <td class="activity-file">
+                <strong>{{ activity.fileName || '—' }}</strong>
+              </td>
+              <td class="activity-type">
+                <span class="activity-type-value" *ngIf="activity.mimeType && activity.fileName; else noType">{{ activity.mimeType }}</span>
+                <ng-template #noType><span class="meta-pill meta-pill--muted">—</span></ng-template>
+              </td>
+              <td>
+                <span class="meta-pill meta-pill--share" *ngIf="activity.resourceType === 'share' && getShareTypeLabel(activity.shareType); else noShareType">{{ getShareTypeLabel(activity.shareType) }}</span>
+                <ng-template #noShareType><span class="meta-pill meta-pill--muted">—</span></ng-template>
+              </td>
+              <td>
+                <span class="activity-inline" *ngIf="activity.recipientEmail; else noRecipient">{{ activity.recipientEmail }}</span>
+                <ng-template #noRecipient><span class="meta-pill meta-pill--muted">—</span></ng-template>
+              </td>
+              <td class="activity-date">{{ formatDate(activity.timestamp) }}</td>
+              <td class="activity-actions-cell">
+                <button type="button" class="icon-btn icon-btn--primary icon-btn--small" (click)="onActivityClick(activity); $event.stopPropagation()">
+                  <span>🔎</span>
+                  <span>Détails</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noActivity>
+        <div class="empty-box">Aucune activité ne correspond aux filtres.</div>
+      </ng-template>
+
+      <div class="pagination-toolbar" *ngIf="activityPageCount > 1">
+        <div class="pagination-info">
+          Page {{ activityCurrentPage }} / {{ activityPageCount }} • {{ filteredActivityFeed.length }} élément(s)
+        </div>
+        <div class="pagination-actions">
+          <button type="button" class="pagination-btn" (click)="onActivityPageChange(activityCurrentPage - 1)" [disabled]="activityCurrentPage <= 1">Précédent</button>
+          <button type="button" class="pagination-btn" (click)="onActivityPageChange(activityCurrentPage + 1)" [disabled]="activityCurrentPage >= activityPageCount">Suivant</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" *ngIf="activeTab === 'history'">
+      <div class="panel-head compact history-head">
+        <div>
+          <h2>Historique de partage</h2>
+          <span>{{ filteredShareHistories.length }} résultat(s)</span>
+        </div>
+        <div class="history-head-actions">
+          <div class="sh-quickfilters">
+            <button type="button" class="sh-qf-chip sh-qf-chip--green" (click)="applyShareQuickFilter('active')">✅ Actifs</button>
+            <button type="button" class="sh-qf-chip sh-qf-chip--gray" (click)="applyShareQuickFilter('expired')">⏳ Expirés</button>
+            <button type="button" class="sh-qf-chip sh-qf-chip--red" (click)="applyShareQuickFilter('revoked')">🚫 Révoqués</button>
+            <button type="button" class="sh-qf-chip sh-qf-chip--outline" (click)="applyShareQuickFilter('')">Tous</button>
+          </div>
+          <button type="button" class="panel-toggle-btn" (click)="toggleShareFilters()">
+            <span>{{ showShareFilters ? '▾' : '▸' }}</span>
+            {{ showShareFilters ? 'Masquer les filtres' : 'Afficher les filtres' }}
+          </button>
+        </div>
+      </div>
+
+      <form *ngIf="showShareFilters" [formGroup]="shareFilterForm" class="filters-grid share-filters compact-filters">
+        <div class="filter-item">
+          <label>Statut</label>
+          <select class="sh-select" formControlName="status">
+            <option value="">Tous</option>
+            <option value="active">Actif</option>
+            <option value="expired">Expiré</option>
+            <option value="revoked">Révoqué</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Type partage</label>
+          <select class="sh-select" formControlName="shareType">
+            <option value="">Tous</option>
+            <option value="direct">Direct</option>
+            <option value="public">Public</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Niveau accès</label>
+          <select class="sh-select" formControlName="accessLevel">
+            <option value="">Tous</option>
+            <option value="view">Consultation</option>
+            <option value="download">Téléchargement</option>
+            <option value="edit">Édition</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Nom fichier</label>
+          <input class="sh-search__input" type="text" formControlName="fileName" placeholder="Rechercher...">
+        </div>
+        <div class="filter-item">
+          <label>Destinataire</label>
+          <input class="sh-search__input" type="text" formControlName="recipientEmail" placeholder="Email...">
+        </div>
+        <div class="filter-item">
+          <label>De</label>
+          <input class="sh-select" type="date" formControlName="startDate">
+        </div>
+        <div class="filter-item">
+          <label>À</label>
+          <input class="sh-select" type="date" formControlName="endDate">
+        </div>
+        <div class="filter-item actions">
+          <button type="button" class="sh-qf-chip sh-qf-chip--outline" (click)="resetShareFilters()">Réinitialiser</button>
+        </div>
+      </form>
+
+      <div class="table-wrapper" *ngIf="filteredShareHistories.length; else noShareHistory">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Fichier</th>
+              <th>Date partage</th>
+              <th>Destinataire</th>
+              <th>Partage</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let share of filteredShareHistories; let i = index" [class.striped]="i % 2 === 1">
+              <td class="file-cell">
+                <span class="file-chip">{{ getFileIcon(share.fileName, share.mimeType) }}</span>
+                <div class="file-summary">
+                  <strong>{{ share.fileName }}</strong>
+                  <span>{{ share.mimeType ? share.mimeType.split('/').pop() : getFileExtension(share.fileName) }}</span>
+                </div>
+              </td>
+              <td>{{ formatDate(share.createdAt) }}</td>
+              <td>
+                <div class="recipient-cell">
+                  <strong>{{ getRecipientPreview(share) }}</strong>
+                  <span>{{ getRecipientCount(share) }} destinataire(s)</span>
+                </div>
+              </td>
+              <td>
+                <span class="type-pill type-{{ share.shareType }}">{{ getShareTypeLabel(share.shareType) }}</span>
+              </td>
+              <td>
+                <span class="status-pill status-{{ share.status }}">
+                  {{ getStatusIcon(share.status) }} {{ getStatusLabel(share.status) }}
+                </span>
+              </td>
+              <td>
+                <button type="button" class="icon-btn icon-btn--primary" (click)="viewDetails(share)">
+                  <span>🔍</span>
+                  <span>Détails</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noShareHistory>
+        <div class="empty-box">Aucun partage ne correspond aux filtres.</div>
+      </ng-template>
+
+      <div class="pagination-toolbar" *ngIf="totalPages > 1">
+        <div class="pagination-info">
+          Page {{ currentPage }} / {{ totalPages }} • {{ totalItems }} élément(s)
+        </div>
+        <div class="pagination-actions">
+          <button type="button" class="pagination-btn" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage <= 1">Précédent</button>
+          <button type="button" class="pagination-btn" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage >= totalPages">Suivant</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <ng-template #loadingState>
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Chargement en cours...</p>
+    </div>
+  </ng-template>
+
+  <div class="modal-backdrop" *ngIf="showDetailsModal">
+    <div class="details-modal" role="dialog" aria-modal="true" aria-labelledby="details-title">
+      <div class="modal-header">
+        <div class="modal-header__copy">
+          <span class="modal-kicker">Partage enregistré</span>
+          <h2 id="details-title">Détails du partage</h2>
+          <p class="subtitle">{{ selectedShare?.fileName }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-content">
+        <div *ngIf="loadingDetails" class="modal-loading">
+          <div class="spinner small"></div>
+          <p>Chargement des détails...</p>
+        </div>
+
+        <div *ngIf="!loadingDetails && selectedShare">
+          <div class="modal-hero">
+            <div class="modal-hero__icon">{{ getFileIcon(selectedShare.fileName, selectedShare.mimeType) }}</div>
+            <div class="modal-hero__body">
+              <div class="modal-hero__title-row">
+                <h3>{{ selectedShare.fileName }}</h3>
+                <span class="status-pill status-{{ selectedShare.status }}">
+                  {{ getStatusIcon(selectedShare.status) }} {{ getStatusLabel(selectedShare.status) }}
+                </span>
+              </div>
+              <p>
+                {{ getShareTypeLabel(selectedShare.shareType) }} · {{ getDetailRecipientLabel(selectedShare) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-card">
+              <span class="detail-label">Type de partage</span>
+              <strong>{{ getShareTypeLabel(selectedShare.shareType) }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Statut</span>
+              <strong>{{ getStatusLabel(selectedShare.status) }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Accès</span>
+              <strong>{{ selectedShare.accessLevel }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Expiration</span>
+              <strong>{{ getExpiryLabel(selectedShare) }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Téléchargements</span>
+              <strong>{{ getDownloadRatio(selectedShare) }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Consultations</span>
+              <strong>{{ selectedShare.viewCount }}</strong>
+            </div>
+          </div>
+
+          <div class="details-section split-grid">
+            <div>
+              <h3>Résumé du partage</h3>
+              <ul class="detail-list">
+                <li><span>Fichier</span><strong>{{ selectedShare.fileName }}</strong></li>
+                <li><span>Destinataire</span><strong>{{ getDetailRecipientLabel(selectedShare) }}</strong></li>
+                <li><span>Propriétaire</span><strong>{{ selectedShare.sharedBy.email || 'Inconnu' }}</strong></li>
+                <li><span>Accès</span><strong>{{ selectedShare.accessLevel }}</strong></li>
+              </ul>
+            </div>
+            <div>
+              <h3>Destinataires</h3>
+              <ul class="detail-list detail-list--recipients">
+                <li *ngFor="let email of getDetailRecipientList(selectedShare)">
+                  <span>Email</span>
+                  <strong>{{ email }}</strong>
+                </li>
+                <li *ngIf="getDetailRecipientList(selectedShare).length === 0">
+                  <span>Email</span>
+                  <strong>Accès public</strong>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="details-section split-grid split-grid--secondary">
+            <div>
+              <h3>Activité</h3>
+              <ul class="detail-list">
+                <li><span>Créé le</span><strong>{{ formatDate(selectedShare.createdAt) }}</strong></li>
+                <li><span>Premier accès</span><strong>{{ selectedShare.firstAccessedAt ? formatDate(selectedShare.firstAccessedAt) : 'Aucun accès' }}</strong></li>
+                <li><span>Dernier accès</span><strong>{{ selectedShare.lastAccessedAt ? formatDate(selectedShare.lastAccessedAt) : 'Aucun accès' }}</strong></li>
+              </ul>
+            </div>
+            <div>
+              <h3>Paramètres</h3>
+              <ul class="detail-list">
+                <li><span>Expiration</span><strong>{{ getExpiryLabel(selectedShare) }}</strong></li>
+                <li><span>Téléchargements</span><strong>{{ getDownloadRatio(selectedShare) }}</strong></li>
+                <li><span>Consultations</span><strong>{{ selectedShare.viewCount }}</strong></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="details-section">
+            <h3>Journal d'accès</h3>
+            <div *ngIf="selectedShare.accessLogs?.length; else noAccessLogs">
+              <div class="log-table-wrapper">
+                <table class="log-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Action</th>
+                      <th>IP</th>
+                      <th>Succès</th>
+                      <th>Agent utilisateur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let log of selectedShare.accessLogs">
+                      <td>{{ formatDate(log.timestamp) }}</td>
+                      <td>{{ log.action === 'download' ? 'Téléchargement' : log.action === 'view' ? 'Consultation' : 'Prévisualisation' }}</td>
+                      <td>{{ log.ipAddress || 'N/A' }}</td>
+                      <td>{{ log.success ? 'Oui' : 'Non' }}</td>
+                      <td>{{ log.userAgent || 'Inconnu' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <ng-template #noAccessLogs>
+              <div class="empty-box">Aucun accès enregistré pour ce partage.</div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="modal-backdrop modal-backdrop--activity" *ngIf="showActivityDetailsModal && selectedActivity">
+    <div class="details-modal details-modal--activity" role="dialog" aria-modal="true" aria-labelledby="activity-details-title">
+      <div class="modal-header modal-header--activity">
+        <div class="modal-header__copy">
+          <span class="modal-kicker">Journal d’activité</span>
+          <h2 id="activity-details-title">{{ selectedActivity?.actionLabel }}</h2>
+          <p class="subtitle">{{ getActivitySummary(selectedActivity) }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeActivityModal()">✕</button>
+      </div>
+
+      <div class="modal-content modal-content--activity">
+        <div class="activity-modal-hero">
+          <div class="activity-modal-hero__icon">{{ selectedActivity.icon }}</div>
+          <div class="activity-modal-hero__copy">
+            <strong>{{ getActivityTypeBadge(selectedActivity) }}</strong>
+            <span>{{ formatDate(selectedActivity.timestamp) }}</span>
+          </div>
+        </div>
+
+        <div class="activity-detail-grid">
+          <div class="activity-detail-card" *ngFor="let detail of getActivityDetailItems(selectedActivity)" [class.activity-detail-card--accent]="detail.tone === 'accent'" [class.activity-detail-card--muted]="detail.tone === 'muted'">
+            <span>{{ detail.label }}</span>
+            <strong>{{ detail.value }}</strong>
+          </div>
+        </div>
+
+        <div class="activity-detail-footer" *ngIf="selectedActivity.resourceId || selectedActivity.resourceType">
+          <span class="meta-pill meta-pill--muted">{{ selectedActivity.resourceType || 'activity' }}</span>
+          <span class="meta-pill meta-pill--muted" *ngIf="selectedActivity.resourceId">{{ selectedActivity.resourceId }}</span>
+        </div>
+      </div>
+    </div>
+  </div>

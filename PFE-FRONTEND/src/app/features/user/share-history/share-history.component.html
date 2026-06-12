@@ -1,0 +1,352 @@
+<div class="sh-root">
+
+  <!-- ══════════════════════════════════════════
+       TOP BAR: Header + Quick Stats
+  ═══════════════════════════════════════════ -->
+  <header class="sh-topbar">
+    <div class="sh-topbar__identity">
+      <div class="sh-topbar__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="20" height="20">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      </div>
+      <div class="sh-topbar__text">
+        <h1>Historique &amp; Analyses</h1>
+        <p>Suivi détaillé de vos partages, activités et évolution du stockage</p>
+      </div>
+    </div>
+
+    <div class="sh-kpi-strip">
+      <div class="sh-kpi sh-kpi--violet">
+        <div class="sh-kpi__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </div>
+        <div class="sh-kpi__body">
+          <strong>{{ shareStats?.totalShares || 0 }}</strong>
+          <span>Partages totaux</span>
+        </div>
+      </div>
+      <div class="sh-kpi sh-kpi--emerald">
+        <div class="sh-kpi__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="sh-kpi__body">
+          <strong>{{ shareStats?.totalDownloads || 0 }}</strong>
+          <span>Téléchargements</span>
+        </div>
+      </div>
+      <div class="sh-kpi sh-kpi--amber">
+        <div class="sh-kpi__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="sh-kpi__body">
+          <strong>{{ shareStats?.totalViews || 0 }}</strong>
+          <span>Consultations</span>
+        </div>
+      </div>
+      <div class="sh-kpi sh-kpi--teal">
+        <div class="sh-kpi__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="sh-kpi__body">
+          <strong>{{ shareStats?.activeShares || 0 }}</strong>
+          <span>Partages actifs</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════
+       MAIN BODY: Sidebar + Content
+  ═══════════════════════════════════════════ -->
+  <div class="sh-body">
+
+    <!-- ── LEFT SIDEBAR: Filters ─────────────── -->
+    <aside class="sh-sidebar">
+      <div class="sh-sidebar__inner">
+
+        <!-- Search -->
+        <div class="sh-search">
+          <svg class="sh-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            (keyup)="filterActivityLogs()"
+            placeholder="Rechercher un fichier…"
+            class="sh-search__input"
+          />
+        </div>
+
+        <!-- Quick filters -->
+        <div class="sh-filter-group">
+          <p class="sh-filter-group__label">Accès rapide</p>
+          <div class="sh-quickfilters">
+            <button class="sh-qf-chip sh-qf-chip--green" (click)="selectedStatus='active'; filterActivityLogs()">Actifs</button>
+            <button class="sh-qf-chip sh-qf-chip--red" (click)="selectedStatus='expired'; filterActivityLogs()">Expirés</button>
+            <button class="sh-qf-chip sh-qf-chip--gray" (click)="selectedStatus='revoked'; filterActivityLogs()">Révoqués</button>
+            <button class="sh-qf-chip sh-qf-chip--outline" (click)="selectedStatus=''; filterActivityLogs()">Tous</button>
+          </div>
+        </div>
+
+        <div class="sh-divider"></div>
+
+        <!-- Statut -->
+        <div class="sh-filter-group">
+          <label class="sh-filter-group__label">Statut</label>
+          <select [(ngModel)]="selectedStatus" (change)="filterActivityLogs()" class="sh-select">
+            <option value="">Tous les statuts</option>
+            <option value="active">Actif</option>
+            <option value="revoked">Révoqué</option>
+            <option value="expired">Expiré</option>
+          </select>
+        </div>
+
+        <!-- Type de partage -->
+        <div class="sh-filter-group">
+          <label class="sh-filter-group__label">Type de partage</label>
+          <select [(ngModel)]="selectedShareType" (change)="filterActivityLogs()" class="sh-select">
+            <option value="">Tous les types</option>
+            <option value="direct">Direct</option>
+            <option value="link">Lien</option>
+            <option value="public">Public</option>
+          </select>
+        </div>
+
+        <!-- Niveau d'accès -->
+        <div class="sh-filter-group">
+          <label class="sh-filter-group__label">Niveau d'accès</label>
+          <select [(ngModel)]="selectedAccessLevel" (change)="filterActivityLogs()" class="sh-select">
+            <option value="">Tous les niveaux</option>
+            <option value="view">Consultation</option>
+            <option value="download">Téléchargement</option>
+            <option value="edit">Édition</option>
+          </select>
+        </div>
+
+        <div class="sh-divider"></div>
+
+        <!-- Export -->
+        <div class="sh-filter-group">
+          <p class="sh-filter-group__label">Exporter</p>
+          <div class="sh-export-btns">
+            <button class="sh-export-btn" (click)="exportToCSV()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              CSV
+            </button>
+            <button class="sh-export-btn" (click)="exportToPDF()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h3"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ───────────────────────── -->
+    <main class="sh-content">
+
+      <!-- Charts Row -->
+      <section class="sh-section">
+        <div class="sh-charts-row">
+
+          <!-- Line chart -->
+          <div class="sh-card sh-card--wide">
+            <div class="sh-card__head">
+              <div>
+                <h3 class="sh-card__title">Tendance d'accès</h3>
+                <p class="sh-card__sub">Évolution des téléchargements et consultations</p>
+              </div>
+            </div>
+            <div class="sh-chart-frame sh-chart-frame--tall">
+              <canvas baseChart [type]="'line'" [data]="activityChartData" [options]="activityChartOptions"></canvas>
+            </div>
+          </div>
+
+          <!-- Doughnut charts -->
+          <div class="sh-charts-col">
+            <div class="sh-card">
+              <div class="sh-card__head">
+                <h3 class="sh-card__title">Types de fichiers</h3>
+                <p class="sh-card__sub">Répartition par format</p>
+              </div>
+              <div class="sh-chart-frame">
+                <canvas baseChart [type]="'doughnut'" [data]="fileTypeChartData" [options]="fileTypeChartOptions"></canvas>
+              </div>
+            </div>
+            <div class="sh-card">
+              <div class="sh-card__head">
+                <h3 class="sh-card__title">États des partages</h3>
+                <p class="sh-card__sub">Statut des liens générés</p>
+              </div>
+              <div class="sh-chart-frame">
+                <canvas baseChart [type]="'doughnut'" [data]="statusChartData" [options]="statusChartOptions"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Activity History -->
+      <section class="sh-section">
+        <div class="sh-card">
+          <div class="sh-card__head sh-card__head--between">
+            <div>
+              <h3 class="sh-card__title">Historique d'activité</h3>
+              <p class="sh-card__sub">Journal détaillé de toutes les actions</p>
+            </div>
+            <span class="sh-count-badge">{{ filteredActivityLogs.length }} entrées</span>
+          </div>
+
+          <!-- Activity Table -->
+          <div class="sh-activity-wrap" *ngIf="filteredActivityLogs.length > 0; else noActivity">
+
+            <!-- Table header -->
+            <div class="sh-tbl-head">
+              <div class="sh-tbl-col sh-tbl-col--file">Fichier</div>
+              <div class="sh-tbl-col sh-tbl-col--type">Type</div>
+              <div class="sh-tbl-col sh-tbl-col--size">Taille</div>
+              <div class="sh-tbl-col sh-tbl-col--date">Date</div>
+              <div class="sh-tbl-col sh-tbl-col--status">Statut</div>
+            </div>
+
+            <!-- Table rows -->
+            <div class="sh-tbl-body">
+              <div class="sh-tbl-row" *ngFor="let log of filteredActivityLogs">
+                <!-- File -->
+                <div class="sh-tbl-col sh-tbl-col--file">
+                  <div class="sh-file-cell">
+                    <div class="sh-activity-icon" [class]="'sh-activity-icon--' + log.type">
+                      <span>{{ getActivityIcon(log.type) }}</span>
+                    </div>
+                    <span class="sh-filename">{{ log.fileName }}</span>
+                  </div>
+                </div>
+                <!-- Type -->
+                <div class="sh-tbl-col sh-tbl-col--type">
+                  <span class="sh-type-pill">{{ getActivityLabel(log.type) }}</span>
+                </div>
+                <!-- Size -->
+                <div class="sh-tbl-col sh-tbl-col--size sh-meta-text">
+                  {{ formatBytes(log.fileSize) }}
+                </div>
+                <!-- Date -->
+                <div class="sh-tbl-col sh-tbl-col--date sh-meta-text">
+                  {{ formatDate(log.timestamp) }}
+                </div>
+                <!-- Status -->
+                <div class="sh-tbl-col sh-tbl-col--status">
+                  <span class="sh-status-badge" [class]="log.status === 'success' ? 'sh-status-badge--ok' : 'sh-status-badge--fail'">
+                    <svg *ngIf="log.status === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                    <svg *ngIf="log.status !== 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    {{ log.status === 'success' ? 'Succès' : 'Échec' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noActivity>
+            <div class="sh-empty">
+              <div class="sh-empty__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" width="32" height="32"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <h4>Aucune activité</h4>
+              <p>Aucune activité de partage pour cette période</p>
+            </div>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- File Stats Table -->
+      <section class="sh-section">
+        <div class="sh-card">
+          <div class="sh-card__head">
+            <h3 class="sh-card__title">Détails par type de fichier</h3>
+            <p class="sh-card__sub">Répartition des fichiers partagés par format</p>
+          </div>
+
+          <div class="sh-fstats-wrap" *ngIf="fileTypeStats.length > 0; else noFileStats">
+            <div class="sh-tbl-head">
+              <div class="sh-tbl-col sh-tbl-col--file">Type</div>
+              <div class="sh-tbl-col sh-tbl-col--size">Nombre</div>
+              <div class="sh-tbl-col sh-tbl-col--size">Taille totale</div>
+              <div class="sh-tbl-col sh-tbl-col--wide">Proportion</div>
+            </div>
+            <div class="sh-tbl-body">
+              <div class="sh-tbl-row" *ngFor="let stat of fileTypeStats">
+                <div class="sh-tbl-col sh-tbl-col--file">
+                  <span class="sh-type-pill sh-type-pill--violet">{{ stat.type || 'Autres' }}</span>
+                </div>
+                <div class="sh-tbl-col sh-tbl-col--size sh-meta-text">{{ stat.count }}</div>
+                <div class="sh-tbl-col sh-tbl-col--size sh-meta-text">{{ formatBytes(stat.totalSize) }}</div>
+                <div class="sh-tbl-col sh-tbl-col--wide">
+                  <div class="sh-pct-row">
+                    <div class="sh-pct-track">
+                      <div class="sh-pct-fill" [style.width.%]="stat.percentage"></div>
+                    </div>
+                    <span class="sh-pct-label">{{ stat.percentage.toFixed(1) }}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noFileStats>
+            <div class="sh-empty">
+              <div class="sh-empty__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" width="32" height="32"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              </div>
+              <h4>Aucune statistique</h4>
+              <p>Aucune statistique de fichier disponible</p>
+            </div>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- Storage Timeline -->
+      <section class="sh-section">
+        <div class="sh-card">
+          <div class="sh-card__head">
+            <div>
+              <h3 class="sh-card__title">Évolution du stockage</h3>
+              <p class="sh-card__sub">Utilisation au fil du temps</p>
+            </div>
+          </div>
+
+          <div class="sh-timeline" *ngIf="storageTimeline.length > 0; else noStorage">
+            <div class="sh-timeline__track"></div>
+            <div class="sh-timeline__items">
+              <div class="sh-timeline__item" *ngFor="let item of storageTimeline; let i = index" [style.left.%]="(i / (storageTimeline.length - 1)) * 100">
+                <div class="sh-timeline__dot"></div>
+                <div class="sh-timeline__label">
+                  <span class="sh-timeline__date">{{ item.date }}</span>
+                  <span class="sh-timeline__usage">{{ formatBytes(item.usage) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noStorage>
+            <div class="sh-empty">
+              <div class="sh-empty__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" width="32" height="32"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              </div>
+              <h4>Aucune donnée</h4>
+              <p>Aucune donnée de stockage disponible</p>
+            </div>
+          </ng-template>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+</div>
