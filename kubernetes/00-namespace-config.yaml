@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pfe
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pfe-config
+  namespace: pfe
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  STORAGE_PROVIDER: "minio"
+  AI_ENABLED: "true"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pfe-secrets
+  namespace: pfe
+type: Opaque
+stringData:
+  # These should be generated and stored securely
+  # Generate with: openssl rand -hex 32
+  JWT_SECRET: "your-jwt-secret-here-change-in-production"
+  MASTER_KEY: "your-master-key-here-change-in-production"
+  MASTER_KEY_SALT: "your-salt-here-change-in-production"
+  MONGO_ROOT_PASSWORD: "your-mongo-password-here"
+  REDIS_PASSWORD: "your-redis-password-here"
+  MINIO_ROOT_PASSWORD: "your-minio-password-here"
+  EMAIL_USER: "your-email@gmail.com"
+  EMAIL_PASS: "your-app-password"
+  VIRUSTOTAL_API_KEY: ""
+  TWILIO_ACCOUNT_SID: ""
+  TWILIO_AUTH_TOKEN: ""
+  TWILIO_PHONE_NUMBER: ""
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pfe-mongodb-pv
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  hostPath:
+    path: /data/pfe/mongodb
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pfe-redis-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  hostPath:
+    path: /data/pfe/redis
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pfe-minio-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  hostPath:
+    path: /data/pfe/minio
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: pfe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: pfe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: pfe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 100Gi

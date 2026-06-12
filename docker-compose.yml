@@ -1,34 +1,279 @@
 version: "3.8"
 
 services:
+  # ========================================================================
+  # MONGODB - Primary Database
+  # ========================================================================
+  mongodb:
+    image: mongo:7-alpine
+    container_name: pfe-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-rootpassword}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pfe-network
+    security_opt:
+      - no-new-privileges:true
 
+  # ========================================================================
+  # REDIS - Cache & Session Store
+  # ========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: pfe-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispassword}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pfe-network
+    security_opt:
+      - no-new-privileges:true
+
+  # ========================================================================
+  # CLAMAV - Antivirus Engine (for malware scanning)
+  # ========================================================================
+  clamav:
+    image: clamav/clamav:latest-alpine
+    container_name: pfe-clamav
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pfe-network
+    environment:
+      - FRESHCLAM_CHECKS=24
+    security_opt:
+      - no-new-privileges:true
+
+  # ========================================================================
+  # MINIO - S3-Compatible Object Storage
+  # ========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: pfe-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-adminpassword}
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - pfe-network
+    security_opt:
+      - no-new-privileges:true
+
+  # ========================================================================
+  # BACKEND - Node.js Express Application
+  # ========================================================================
   backend:
-    build: ./backend
+    build:
+      context: ./PFE-BACKEND
+      dockerfile: Dockerfile
+    container_name: pfe-backend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - MONGO_URL=mongodb://mongo:27017/pfe
-      - REDIS_URL=redis://redis:6379
+      # Node environment
+      NODE_ENV: production
+      PORT: 3000
+      
+      # Database
+      MONGO_URI: mongodb://root:${MONGO_ROOT_PASSWORD:-rootpassword}@mongodb:27017/pfe?authSource=admin
+      
+      # Cache
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
+      
+      # Antivirus
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+      
+      # Storage
+      STORAGE_PROVIDER: minio
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-adminpassword}
+      MINIO_REGION: us-east-1
+      
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      MASTER_KEY: ${MASTER_KEY:-your-master-encryption-key-change-in-production}
+      MASTER_KEY_SALT: ${MASTER_KEY_SALT:-production-salt-change-this-value}
+      
+      # Email
+      EMAIL_USER: ${EMAIL_USER:-your-email@gmail.com}
+      EMAIL_PASS: ${EMAIL_PASS:-your-app-password}
+      
+      # Malware Scanning
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      
+      # AI Integration (Ollama)
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral:latest}
+      AI_ENABLED: "true"
+      OLLAMA_TIMEOUT_MS: "120000"
+      
+      # AI Features
+      AI_DETECT_ANOMALIES: "true"
+      AI_CLASSIFY_DOCUMENTS: "true"
+      AI_ANALYZE_MALWARE_BEHAVIOR: "true"
+      AI_DETECT_SUSPICIOUS_SHARING: "true"
+      
+      # Logging
+      LOG_LEVEL: info
+      
+      # Rate Limiting
+      RATE_LIMIT_WINDOW_MS: "900000"
+      RATE_LIMIT_MAX_REQUESTS: "100"
+      
+      # 2FA (Twilio)
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      
+      # CORS
+      CORS_ORIGINS: http://localhost:4200,http://frontend:80
+    
     depends_on:
-      - mongo
-      - redis
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "4200:80"
-
-  mongo:
-    image: mongo:7
-    ports:
-      - "27017:27017"
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    
     volumes:
-      - mongo_data:/data/db
+      - ./PFE-BACKEND/uploads:/app/uploads
+    
+    networks:
+      - pfe-network
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    
+    security_opt:
+      - no-new-privileges:true
+    
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
 
-  redis:
-    image: redis:7
+  # ========================================================================
+  # FRONTEND - Angular with Nginx
+  # ========================================================================
+  frontend:
+    build:
+      context: ./PFE-FRONTEND
+      dockerfile: Dockerfile
+    container_name: pfe-frontend
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - pfe-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 
+  # ========================================================================
+  # OLLAMA - AI Integration (Optional - Comment if not needed)
+  # ========================================================================
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: pfe-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   networks:
+  #     - pfe-network
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "4"
+  #         memory: 8G
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  pfe-network:
+    driver: bridge
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
 volumes:
-  mongo_data:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  clamav_data:
+    driver: local
+  # ollama_data:
+  #   driver: local

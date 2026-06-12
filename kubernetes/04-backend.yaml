@@ -1,0 +1,249 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pfe-backend
+  namespace: pfe
+  labels:
+    app: pfe-backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: pfe-backend
+  template:
+    metadata:
+      labels:
+        app: pfe-backend
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - pfe-backend
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: backend
+        image: ousssama/pfe-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: pfe-config
+              key: NODE_ENV
+        - name: PORT
+          value: "3000"
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: pfe-config
+              key: LOG_LEVEL
+        # Database
+        - name: MONGO_URI
+          value: "mongodb://root:$(MONGO_ROOT_PASSWORD)@mongodb:27017/pfe?authSource=admin"
+        - name: MONGO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: MONGO_ROOT_PASSWORD
+        # Cache
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@redis:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: REDIS_PASSWORD
+        # Storage
+        - name: STORAGE_PROVIDER
+          valueFrom:
+            configMapKeyRef:
+              name: pfe-config
+              key: STORAGE_PROVIDER
+        - name: MINIO_ENDPOINT
+          value: "minio"
+        - name: MINIO_PORT
+          value: "9000"
+        - name: MINIO_USE_SSL
+          value: "false"
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: MINIO_REGION
+          value: "us-east-1"
+        # Security
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: JWT_SECRET
+        - name: MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: MASTER_KEY
+        - name: MASTER_KEY_SALT
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: MASTER_KEY_SALT
+        # Email
+        - name: EMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: EMAIL_USER
+        - name: EMAIL_PASS
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: EMAIL_PASS
+        # AI
+        - name: AI_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: pfe-config
+              key: AI_ENABLED
+        - name: OLLAMA_HOST
+          value: "http://ollama:11434"
+        - name: OLLAMA_MODEL
+          value: "mistral:latest"
+        - name: OLLAMA_TIMEOUT_MS
+          value: "120000"
+        - name: AI_DETECT_ANOMALIES
+          value: "true"
+        - name: AI_CLASSIFY_DOCUMENTS
+          value: "true"
+        - name: AI_ANALYZE_MALWARE_BEHAVIOR
+          value: "true"
+        - name: AI_DETECT_SUSPICIOUS_SHARING
+          value: "true"
+        # Rate Limiting
+        - name: RATE_LIMIT_WINDOW_MS
+          valueFrom:
+            configMapKeyRef:
+              name: pfe-config
+              key: RATE_LIMIT_WINDOW_MS
+        - name: RATE_LIMIT_MAX_REQUESTS
+          valueFrom:
+            configMapKeyRef:
+              name: pfe-config
+              key: RATE_LIMIT_MAX_REQUESTS
+        # Twilio 2FA
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: TWILIO_ACCOUNT_SID
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: TWILIO_AUTH_TOKEN
+        - name: TWILIO_PHONE_NUMBER
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: TWILIO_PHONE_NUMBER
+        # VirusTotal
+        - name: VIRUSTOTAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pfe-secrets
+              key: VIRUSTOTAL_API_KEY
+        # ClamAV
+        - name: CLAMAV_HOST
+          value: "clamav"
+        - name: CLAMAV_PORT
+          value: "3310"
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pfe-backend
+  namespace: pfe
+spec:
+  selector:
+    app: pfe-backend
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pfe-backend-hpa
+  namespace: pfe
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pfe-backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
