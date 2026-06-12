@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with frozen lockfile
-RUN npm ci
+# Install all dependencies (needed for build)
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -22,8 +22,8 @@ RUN npm run build -- --configuration production
 # ============================================================================
 FROM nginx:1.25-alpine
 
-# Security: Set metadata labels
-LABEL maintainer="ousssama"
+# Metadata labels
+LABEL maintainer="oussama"
 LABEL version="1.0.0"
 LABEL description="PFE Secure Storage Frontend Service"
 
@@ -36,13 +36,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built Angular app from builder stage
 COPY --from=builder /app/dist/pfe-frontend /usr/share/nginx/html
 
-# Create nginx cache directories with proper permissions
+# Ensure proper permissions for Nginx cache
 RUN mkdir -p /var/cache/nginx && \
     chmod -R 755 /var/cache/nginx && \
     chown -R nginx:nginx /var/cache/nginx
-
-# Security: Create non-root user (already exists in nginx image)
-# nginx user already exists in official nginx image
 
 # Expose port
 EXPOSE 80

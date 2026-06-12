@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (with frozen lockfile for reproducibility)
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # ============================================================================
 # STAGE 2: Runtime
